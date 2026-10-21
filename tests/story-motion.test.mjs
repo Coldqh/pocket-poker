@@ -60,7 +60,7 @@ test('backwards navigation animates removed bets but leaves identical cards stab
  assert.deepEqual(reverse.villain,['still','still']);
  assert.equal(reverse.chipDirection,'out');
  const previousFlop=storyMotion(scenes[5],scenes[4]);
- assert.deepEqual(previousFlop.board,['still','still','still']);
+ assert.deepEqual(previousFlop.board,['highlight','still','still']); // returning to flop restores the ace highlight without re-dealing
  assert.deepEqual(previousFlop.hero,['highlight','still']);
 });
 
