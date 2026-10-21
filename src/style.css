@@ -314,3 +314,96 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .chip-editor-footer .big-primary{min-height:47px}
 @media(max-width:385px){.table-setup.setup-compact{padding-left:10px;padding-right:10px}.setup-compact-row{grid-template-columns:87px minmax(0,1fr)}.setup-compact-row>span{font-size:12px}.setup-stack-summary strong{font-size:22px}.setup-stack-summary button{font-size:10px;padding:7px}}
 @media(max-height:680px){.setup-main{gap:8px}.setup-compact>.study-header{margin-bottom:5px}.setup-compact-modes button{min-height:42px}.setup-compact .setup-seats button,.setup-compact .setup-rule-grid button{min-height:38px}.setup-stack-summary{padding:9px}.setup-fixed-footer{padding-top:7px}}
+
+
+/* POCKET 1.0 — interactive poker lab */
+.academy-lab-entry{display:flex;align-items:center;gap:13px;width:100%;min-height:76px;margin:10px 0 14px;padding:13px;text-align:left;border:1px solid #6b8260;border-radius:16px;background:linear-gradient(130deg,#294736,#1b3328);color:#f1f4e9}
+.academy-lab-entry>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:5px}
+.academy-lab-entry strong{font-size:16px}.academy-lab-entry small{font-size:11px;color:#bcd4bd}
+.lab-entry-mark{width:42px;height:42px;display:grid;place-items:center;background:#e5cd97;color:#213526;border-radius:12px;font-size:26px;flex:none}
+.academy-lab-quick{border:1px solid #678465;background:#293e2f;color:#f5e4b5;border-radius:12px;padding:12px;width:100%;margin:12px 0}
+.poker-lab{min-height:100dvh;padding:8px 12px 110px;max-width:650px;margin:0 auto}
+.poker-lab>.study-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px}
+.poker-lab>.study-header>strong{font-size:17px}
+.lab-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:4px;background:#1a2e23;border:1px solid #3a5943;border-radius:13px;margin-bottom:17px}
+.lab-tabs button{min-height:40px;border:0;border-radius:9px;background:transparent;color:#b8c8b9;font-size:13px;font-weight:750}
+.lab-tabs button.active{background:#e7ca91;color:#1f2f24}
+.lab-body{display:flex;flex-direction:column;gap:15px}
+.lab-tools-heading h2{margin:0 0 7px;font-size:24px;line-height:1.13}
+.lab-tools-heading p{margin:0;color:#b2c7b5;font-size:13px;line-height:1.45}
+.lab-controls{display:grid;gap:14px;background:#1a2d23;border:1px solid #395641;border-radius:15px;padding:17px 14px}
+.lab-range{display:grid;gap:8px}
+.lab-range-label{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.lab-range-label b{font-size:17px;font-variant-numeric:tabular-nums;color:#efdaac}
+.lab-range input{width:100%;accent-color:#e6c78d;height:21px;cursor:pointer}
+.lab-inline{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px}
+.lab-toggle{display:flex;gap:4px}
+.lab-toggle button{border:1px solid #657b66;background:#263d2e;color:#cfe0d1;border-radius:8px;padding:9px 11px;min-height:37px;font-size:12px}
+.lab-toggle button.active{background:#d9bf8d;color:#243028}
+.lab-odds-result{display:grid;gap:12px;background:#183528;border:1px solid #6c8c69;padding:17px 15px;border-radius:16px}
+.lab-odds-figures{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lab-odds-figures>div{display:flex;flex-direction:column;gap:5px}
+.lab-odds-figures span{font-size:11px;color:#bccebf}
+.lab-odds-figures strong{font-size:28px;color:#f5dfa9;letter-spacing:-.02em}
+.lab-compare-track{position:relative;height:10px;border-radius:20px;background:#365b45;overflow:visible;margin:9px 0}
+.lab-compare-track>span{display:block;height:100%;background:#b18a64;border-radius:20px}
+.lab-compare-track>i{position:absolute;top:-6px;width:4px;height:22px;background:#f4ead1;border-radius:4px;transform:translateX(-50%)}
+.lab-odds-summary{display:flex;gap:5px;flex-direction:column}
+.lab-odds-summary b{font-size:14px;color:#dfefdc}.lab-odds-summary span{font-size:12px;color:#c8d8c6}
+.lab-disclaimer{margin:0;color:#9db29f;font-size:11px;line-height:1.6}
+.lab-mini-quiz{background:#222f25;border:1px solid #455849;border-radius:16px;padding:15px;display:grid;gap:11px}
+.lab-quiz-heading{display:flex;flex-direction:column;gap:5px}
+.lab-quiz-heading>span{font-size:11px;color:#e5ca95}
+.lab-quiz-heading>strong{font-size:17px}
+.lab-mini-quiz>p{font-size:13px;line-height:1.5;color:#cee0cf;margin:0}
+.lab-quiz-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lab-quiz-options button{min-height:49px;border-radius:11px;border:1px solid #65846c;background:#2c5039;color:#edf5ed;font-size:15px;font-weight:750}
+.lab-quiz-options button:disabled{opacity:.5}
+.lab-quiz-answer{display:flex;flex-direction:column;gap:7px;padding:11px;border-radius:10px;background:#314a34}
+.lab-quiz-answer strong{font-size:14px;color:#f1d59c}
+.lab-quiz-answer>span{font-size:12px;line-height:1.5}
+.lab-quiz-answer button{margin-top:5px;padding:10px;border-radius:9px;background:#dec596;color:#1b2d20;border:0;font-weight:800}
+.lab-builder{display:flex;flex-direction:column;gap:18px}
+.lab-hands{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.lab-hands>div{background:#1b3025;padding:12px;border:1px solid #445c47;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.lab-hands>div>span{font-size:11px;color:#b3c9b5}.lab-hands>div>strong{font-size:12px;color:#f0d6a3;text-align:center}
+.lab-cards,.lab-replay-cards{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
+.lab-card{width:42px;height:59px;flex:0 0 auto;border-radius:6px;background:#f3eee0;color:#202d27;border:1px solid #a9ac9b;box-shadow:0 3px 6px #0004;display:grid;place-items:center;font-size:17px;font-weight:850;font-family:Georgia,serif;padding:0}
+.lab-card.red{color:#ad3a3a}.lab-card.empty{background:#294331;border:1px dashed #a1b3a0;color:#e2d09a}
+.lab-card:disabled{opacity:1}
+.lab-card:not(:disabled):active{transform:scale(.94)}
+.lab-builder-felt{background:#204c36 url('./assets/felt-texture.svg') center / cover no-repeat;border:8px solid #443626;border-radius:42% / 35%;min-height:168px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:15px 5px;box-shadow:0 0 0 2px #7b7651}
+.lab-builder-felt>span{font-size:10px;letter-spacing:.08em;color:#c8dfc7}
+.lab-builder-felt .lab-card{width:clamp(30px,9vw,42px);height:clamp(44px,13vw,58px);font-size:14px}
+.lab-builder-result{border-radius:12px;background:#1d3326;border:1px solid #557156;padding:12px;color:#eddfbd;font-size:13px;line-height:1.5}
+.lab-builder-result small{display:block;margin-top:5px;color:#d2a77d}
+.lab-builder-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.lab-builder-actions button{min-height:47px;border-radius:9px;background:#304837;border:1px solid #658068;color:#f5efe0;font-weight:800}
+.lab-picker-scrim{z-index:120}
+.lab-picker{max-height:70dvh;overflow:auto;padding:15px 13px max(15px,env(safe-area-inset-bottom));max-width:520px}
+.lab-suit-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:15px 0}
+.lab-suit-picker button{min-height:46px;border-radius:10px;background:#24392c;border:1px solid #5a7158;color:#eee0c0;font-size:23px}
+.lab-suit-picker button.active{background:#e5c898;color:#203426}
+.lab-rank-picker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-bottom:15px}
+.lab-rank-picker button{min-height:45px;background:#f1eddd;color:#203126;border:1px solid #ccd6c6;border-radius:8px;padding:3px 0;font-size:13px;font-weight:800}
+.lab-rank-picker button.red{color:#b33e40}
+.lab-rank-picker button:disabled{background:#4e6152;color:#96ac98}
+.lab-picker>.ghost-button{width:100%}
+.lab-replay-picks{display:flex;gap:7px;overflow-x:auto;padding-bottom:5px}
+.lab-replay-picks button{flex:0 0 auto;min-height:41px;min-width:58px;background:#253c2d;color:#caddca;border:1px solid #547055;border-radius:9px;font-weight:750}
+.lab-replay-picks button.active{background:#e4c68f;color:#1d2e20}
+.lab-frame-head{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13px}
+.lab-frame-head>span{color:#d9c28f;white-space:nowrap}
+.lab-replay-board{background:#164833 url('./assets/felt-texture.svg') center / cover no-repeat;border:7px solid #443424;border-radius:44% / 32%;min-height:145px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;box-shadow:0 0 0 2px #756f4d}
+.lab-replay-board>span{font-size:13px;color:#f2e9cb}
+.lab-replay-cards .lab-card{width:30px;height:41px;font-size:11px}
+.lab-frame-players{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lab-frame-players>div{display:flex;flex-direction:column;align-items:center;gap:6px;background:#1b3024;border-radius:11px;padding:10px 6px;border:1px solid #3d5741}
+.lab-frame-players>div.folded{opacity:.45}
+.lab-frame-players b{font-size:12px}.lab-frame-players span{font-size:10px;color:#b8ceb7;text-align:center}
+.lab-frame-odds{font-size:12px;background:#223c2a;border-left:3px solid #e2c58d;padding:11px;line-height:1.5}
+.lab-replay-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lab-replay-controls button{min-height:48px;border:1px solid #62846b;background:#2c4b35;color:#f3eddb;border-radius:9px;font-weight:750}
+.lab-replay-controls button:disabled{opacity:.4}
+.lab-empty{padding:22px 16px;border:1px dashed #65846b;border-radius:12px;color:#cadbcc;font-size:14px;line-height:1.5}
+@media(max-width:370px){.poker-lab{padding-left:8px;padding-right:8px}.lab-card{width:37px;height:53px}.lab-rank-picker{gap:4px}.lab-hands{gap:6px}.lab-builder-felt .lab-card{width:30px;height:43px}}
