@@ -18,7 +18,7 @@ const READY_KEY = 'pocket-v6-table-ready';
 const CAREER_KEY = 'pocket-v9-career';
 const emptyProfile:Profile = {configured:false,experience:'new',known:[],focus:[]};
 const emptyProgress:Progress = {completed:[],attempts:{}};
-const emptySession:Session = {moduleId:null,phase:'theory',index:0,choice:null,correct:0,theoryIndex:0};
+const emptySession:Session = {moduleId:null,phase:'practice',index:0,choice:null,correct:0,theoryIndex:0};
 const money = (n:number) => n.toLocaleString('ru-RU');
 const playerCountLabel = (n:number) => `${n} ${n===2?'игрока':'игроков'}`;
 type ChipSize = 'mini' | 'small' | 'large' | 'bet';
@@ -342,23 +342,41 @@ function Assessment({profile,onSave,onCancel}:{profile:Profile;onSave:(p:Profile
 }
 function Study({module,session,setSession,onBack,onFinish}:{module:Module;session:Session;setSession:Dispatch<SetStateAction<Session>>;onBack:()=>void;onFinish:(id:string,correct:number,total:number)=>void}){
   const scenario=module.scenarios[Math.min(session.index,module.scenarios.length-1)];
+  const [hintVisible,setHintVisible]=useState(false);
+  const [explainMore,setExplainMore]=useState(false);
+  const [theoryVisible,setTheoryVisible]=useState(false);
   const choose=(index:number)=>{if(session.choice===null)setSession(s=>({...s,choice:index}));};
   const advance=()=>{
     if(session.choice===null)return;
     const correct=session.correct+(session.choice===scenario.correct?1:0);
     if(session.index>=module.scenarios.length-1){onFinish(module.id,correct,module.scenarios.length);setSession(s=>({...s,correct,phase:'finished'}));}
     else setSession(s=>({...s,index:s.index+1,choice:null,correct}));
+    setHintVisible(false);setExplainMore(false);setTheoryVisible(false);
   };
   const currentTheory=Math.min(Math.max(0,session.theoryIndex??0),module.theory.length-1);
-  const progress=session.phase==='theory'?Math.round((currentTheory+1)/(module.theory.length+module.scenarios.length)*100):session.phase==='finished'?100:Math.round((module.theory.length+session.index+1)/(module.theory.length+module.scenarios.length)*100);
-  return <div className="study-screen"><div className="study-header"><button className="icon-button" aria-label="Назад к темам" onClick={onBack}><Icon name="back"/></button><span className="truncate">{module.title}</span><span className="counter">{session.phase==='practice'?`${session.index+1}/${module.scenarios.length}`:''}</span></div><div className="progress-track"><span style={{width:`${progress}%`}}/></div>
-    {session.phase==='theory'?<><div className="reading-content reading-cards"><div className="reading-kicker">КРАТКО · {currentTheory+1}/{module.theory.length}</div><h1>{module.title}</h1><article className="reading-section reading-slide" key={currentTheory}><div className="lesson-step-mark">{String(currentTheory+1).padStart(2,'0')}</div><h2>{module.theory[currentTheory].heading}</h2><p>{module.theory[currentTheory].text}</p></article><div className="reading-step-dots">{module.theory.map((_,i)=><button key={i} aria-label={`Перейти к части ${i+1}`} className={i===currentTheory?'active':''} onClick={()=>setSession(s=>({...s,theoryIndex:i}))}/>)}</div></div><div className="study-footer study-footer-dual">{currentTheory>0&&<button className="ghost-button" onClick={()=>setSession(s=>({...s,theoryIndex:currentTheory-1}))}>Назад</button>}<button className="big-primary" onClick={()=>currentTheory+1<module.theory.length?setSession(s=>({...s,theoryIndex:currentTheory+1})):setSession(s=>({...s,phase:'practice',index:0,choice:null,correct:0}))}>{currentTheory+1<module.theory.length?'Дальше':'Перейти к раздачам'} <Icon name="chevron" size={18}/></button></div></>:
-    session.phase==='practice'?<><div className="scenario-content"><div className="scenario-context"><span className="reading-kicker">ТВОЙ ХОД / {session.index+1} ИЗ {module.scenarios.length}</span><h1>{scenario.title}</h1><details className="glow-scenario-details"><summary>Условия раздачи <Icon name="chevron" size={16}/></summary><p>{scenario.context}</p></details></div>
-      {(scenario.hand||scenario.board)&&<div className="scenario-table"><div className="scenario-board">{scenario.board?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div><div className="scenario-hand">{scenario.hand?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div></div>}
-      <h2 className="scenario-question">{scenario.question}</h2><div className="scenario-decision-hint">Выбери линию. Затем разберём решение.</div><div className="scenario-answers">{scenario.choices.map((choice,i)=><button key={i} disabled={session.choice!==null} onClick={()=>choose(i)} className={session.choice===null?'':i===scenario.correct?'correct':session.choice===i?'incorrect':'dimmed'}><span>{choice}</span>{session.choice!==null&&i===scenario.correct?'✓':''}</button>)}</div>
-      {session.choice!==null&&<div className="scenario-explanation"><strong>{session.choice===scenario.correct?'Хорошо разобрался':'Вот что важно'}</strong><p>{scenario.explanation}</p><small>Разбор относится к заданным условиям и профилю соперника.</small></div>}
-    </div>{session.choice!==null&&<div className="study-footer"><button className="big-primary" onClick={advance}>{session.index+1<module.scenarios.length?'Следующая ситуация':'Завершить'} <Icon name="chevron" size={18}/></button></div>}</>:
-    <div className="finish-screen"><span className="finish-mark">♠</span><h1>{session.correct} из {module.scenarios.length}</h1><p>Практика завершена. К любой теме можно вернуться.</p><button className="big-primary" onClick={onBack}>К темам <Icon name="chevron" size={18}/></button><button className="text-button" onClick={()=>setSession(s=>({...s,phase:'theory',index:0,choice:null,correct:0}))}>Пройти заново</button></div>}
+  const example=module.theory[currentTheory];
+  const takeaway=scenario.explanation.split(/\.\s+/)[0]+(scenario.explanation.includes('. ')?'.':'');
+  const complete=session.phase==='finished';
+  return <div className="study-screen easy-study">
+    <div className="study-header"><button className="icon-button" aria-label="Вернуться к темам" onClick={onBack}><Icon name="back"/></button><span className="truncate">{module.title}</span><span className="counter">{complete?'Готово':(session.index+1)+' из '+module.scenarios.length}</span></div>
+    <div className="progress-track"><span style={{width:(complete?100:(session.index+1)/module.scenarios.length*100)+'%'}}/></div>
+    {complete?<div className="finish-screen easy-finish"><span className="finish-mark">✓</span><span className="reading-kicker">ТЫ ПРОШЁЛ ЭТИ СИТУАЦИИ</span><h1>{session.correct} из {module.scenarios.length}</h1><p>Ошибки — часть тренировки. Можешь попробовать ещё раз или выбрать другую тему.</p><button className="big-primary" onClick={()=>setSession({...emptySession,moduleId:module.id})}>Ещё раз <Icon name="chevron" size={18}/></button><button className="ghost-button" onClick={onBack}>К спотам</button></div>:
+      <div className="easy-study-main">
+        <div className="easy-spot-lead"><span className="reading-kicker">СИТУАЦИЯ {session.index+1} / {module.scenarios.length}</span><h1>{scenario.title}</h1><p>{scenario.context}</p></div>
+        {(scenario.hand||scenario.board)&&<div className="scenario-table easy-spot-table" role="group" aria-label="Карты в ситуации">
+          <div className="scenario-board">{scenario.board?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div>
+          <div className="scenario-hand">{scenario.hand?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div>
+        </div>}
+        <h2 className="easy-spot-question">{scenario.question}</h2>
+        <div className="scenario-answers easy-spot-answers">
+          {scenario.choices.map((choice,i)=><button key={i} disabled={session.choice!==null} onClick={()=>choose(i)} className={session.choice===null?'':i===scenario.correct?'correct':session.choice===i?'incorrect':'dimmed'}><span>{choice}</span>{session.choice!==null&&i===scenario.correct?'✓':''}</button>)}
+        </div>
+        {session.choice===null?<div className="easy-study-help"><button className="easy-help-toggle" aria-expanded={hintVisible} onClick={()=>setHintVisible(x=>!x)}><Icon name="book" size={16}/>{hintVisible?'Скрыть подсказку':'Нужна подсказка?'}</button>{hintVisible&&<div className="easy-hint"><strong>{module.theory[0]?.heading}</strong><p>{module.theory[0]?.text}</p></div>}</div>:
+          <div className="easy-feedback" aria-live="polite"><div className="easy-feedback-header"><span>{session.choice===scenario.correct?'✓ Хорошее решение':'Разберём ход'}</span><strong>{session.choice===scenario.correct?'Ты учёл главное':'Вот на что стоит смотреть'}</strong></div><p>{takeaway}</p>{scenario.explanation!==takeaway&&<><button className="easy-feedback-more" aria-expanded={explainMore} onClick={()=>setExplainMore(v=>!v)}>{explainMore?'Скрыть объяснение':'Понять подробнее'} <Icon name="chevron" size={16}/></button>{explainMore&&<p className="easy-feedback-extra">{scenario.explanation}</p>}</>}</div>}
+        {session.choice!==null&&<button className="big-primary easy-next" onClick={advance}>{session.index+1<module.scenarios.length?'Следующая ситуация':'Посмотреть результат'} <Icon name="chevron" size={18}/></button>}
+        <div className="easy-theory-section"><button aria-expanded={theoryVisible} onClick={()=>setTheoryVisible(v=>!v)} className="easy-theory-toggle"><span><span className="eyebrow">ПО ЖЕЛАНИЮ</span><strong>Разобраться в теме</strong></span><Icon name="chevron" size={19}/></button>{theoryVisible&&<div className="easy-theory-list">{module.theory.map((item,i)=><article key={i}><strong>{item.heading}</strong><p>{item.text}</p></article>)}</div>}</div>
+      </div>
+    }
   </div>;
 }
 function Academy({profile,setProfile,progress,setProgress,session,setSession,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;progress:Progress;setProgress:Dispatch<SetStateAction<Progress>>;session:Session;setSession:Dispatch<SetStateAction<Session>>;game:GameState}){
@@ -385,11 +403,11 @@ function Academy({profile,setProfile,progress,setProgress,session,setSession,gam
         <span className="atelier-feature-copy"><small>{recommended.tag}</small><strong>{sample.title}</strong><span>Проверить решение</span></span>
         <span className="atelier-feature-cards" aria-hidden="true">{sample.hand?.length?sample.hand.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
       </span>
-      <span className="atelier-feature-action">В игру <Icon name="chevron" size={17}/></span>
+      <span className="atelier-feature-action">Начать <Icon name="chevron" size={17}/></span>
     </button>
     <div className="atelier-tools">
-      <div><span className="eyebrow">ИНСТРУМЕНТЫ</span><h2>Разобраться глубже</h2></div>
-      <button className="atelier-tool-link" onClick={()=>setLabOpen(true)}><span className="atelier-tool-icon">♣</span><span><strong>Лаборатория</strong><small>Математика, карты и свои раздачи</small></span><Icon name="chevron" size={19}/></button>
+      <div><span className="eyebrow">ИНСТРУМЕНТЫ</span><h2>Хочешь ещё попробовать?</h2></div>
+      <button className="atelier-tool-link" onClick={()=>setLabOpen(true)}><span className="atelier-tool-icon">♣</span><span><strong>Поиграть с картами</strong><small>Три простых эксперимента. Формулы необязательны.</small></span><Icon name="chevron" size={19}/></button>
     </div>
     <div className="atelier-catalog">
       <button className="atelier-catalog-toggle" aria-expanded={catalogOpen} onClick={()=>setCatalogOpen(x=>!x)}><span><span className="eyebrow">ВСЕ МАТЕРИАЛЫ</span><strong>Коллекция тем <span>{modules.length}</span></strong></span><Icon name="chevron" size={20}/></button>
