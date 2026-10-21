@@ -1,13 +1,10 @@
 {
-  "id": "./",
-  "name": "POCKET — покер и обучение",
+  "name": "POCKET — poker club & academy",
   "short_name": "POCKET",
-  "description": "Учись покеру, тренируй решения, играй против бота — без денег и подписок.",
-  "lang": "ru",
+  "description": "Покер против ботов и персональные учебные раздачи. Только условные фишки.",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f4ec",
-  "theme_color": "#f7f4ec",
-  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "background_color": "#0e1318",
+  "theme_color": "#0e1318",
+  "icons": [{"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
 }
