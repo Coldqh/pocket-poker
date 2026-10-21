@@ -247,6 +247,7 @@ function controlledRiver(contributions,startingStacks=[1000,1000,1000]){
   return s;
 }
 function settleScripted(s){
+  if(s.players.hero.stack===0)s.actor='bot-2';
   for(let i=0;i<5&&!s.result;i++){
     assert.ok(s.actor);
     s=act(s,s.actor,{kind:'check'});
