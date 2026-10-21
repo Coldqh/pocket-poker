@@ -1,6 +1,6 @@
 /** Deterministic animated lessons. Every scene has a visual action and a short narration.
  * No random cards, knowledge gates or graded questions in Story Mode. */
-import {modules as legacyModules} from './lessons';
+import {modules as legacyModules} from './lessons.ts';
 
 export type StorySceneType = 'intro'|'deal'|'blinds'|'action-demo'|'board-reveal'|'compare'|'range'|'takeaway';
 export type StoryScene={
