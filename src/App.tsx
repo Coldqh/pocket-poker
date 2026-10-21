@@ -277,7 +277,11 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
   };
   const startNew=()=>{setSheet(null);setRaiseOpen(false);onNewTable();};
   return <section className={`game-screen motion-${speed}`}>
-    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>{game.format==='sitngo'?'SIT & GO':'POCKET TABLE'}</strong><span>{streetName[game.street]} · {game.smallBlind}/{game.bigBlind} · #{game.handNumber}{game.format==='sitngo'?` · Ур. ${Math.floor((game.handNumber-1)/SITNGO_HANDS_PER_LEVEL)+1}`:''}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>{setReplayNumber(null);setReplayIndex(0);setSheet('history');}}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
+    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>{game.format==='sitngo'?'SIT & GO':'POCKET TABLE'}</strong><span>{game.smallBlind}/{game.bigBlind} · #{game.handNumber}{game.format==='sitngo'?` · Ур. ${Math.floor((game.handNumber-1)/SITNGO_HANDS_PER_LEVEL)+1}`:''}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>{setReplayNumber(null);setReplayIndex(0);setSheet('history');}}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
+    <div className="street-ribbon" aria-label="Улица раздачи">{([['preflop','Пре'],['flop','Флоп'],['turn','Тёрн'],['river','Ривер']] as const).map(([id,label],i)=>{
+      const index=['preflop','flop','turn','river','showdown'].indexOf(game.street);
+      return <span key={id} className={index===i?'current':index>i?'passed':''}>{label}</span>;
+    })}</div>
     <div className={`table-stage seats-${game.opponentCount}`}>
       <div className="table-felt"><div className="table-felt-inner"/><div className="table-grain"/></div>
       {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seatCoords[game.opponentCount][i]} action={notice?.player===id?notice.message:undefined} onInspect={setInspected}/>)}
