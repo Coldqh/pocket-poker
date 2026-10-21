@@ -1,6 +1,6 @@
 /* POCKET 2.3 — Story Mode.
    Immersive deterministic scene reader + course shelf. Same After Hours palette. */
-.story-playing{background:#14191F}
+.app-shell.story-playing{display:block;background:#14191F;grid-template-columns:none}
 .story-playing .app-main{width:100%;max-width:none;min-height:100dvh;padding:0}
 .story-playing .academy-screen{max-width:none;padding:0}
 .novel-screen{--novel-felt:#1B4D3F;max-width:700px;width:100%;margin:auto;min-height:100dvh;display:flex;flex-direction:column;color:#F3F3EE;padding:13px 16px max(15px,env(safe-area-inset-bottom))}
