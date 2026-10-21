@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type CSSProperties } from 'react';
 import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, type Card, type GameState } from './engine';
 import { modules, type Module } from './lessons';
+import { breakdownChips, collectedPot, type ChipGroup } from './chips';
 
 type Page = 'home' | 'play' | 'academy' | 'stats';
 type Profile = { configured: boolean; experience: 'new' | 'some' | 'confident'; known: string[]; focus: string[] };
@@ -17,6 +18,27 @@ const emptySession:Session = {moduleId:null,phase:'theory',index:0,choice:null,c
 const money = (n:number) => n.toLocaleString('ru-RU');
 const playerCountLabel = (n:number) => `${n} ${n===2?'игрока':'игроков'}`;
 const streetName:Record<string,string> = {preflop:'Префлоп',flop:'Флоп',turn:'Тёрн',river:'Ривер',showdown:'Вскрытие'};
+type ChipSize = 'mini' | 'small' | 'large' | 'bet';
+/** Each denomination is visible as a stacked set of physical-looking discs;
+ * the integer badge shows the FULL count, even with a tall stack. */
+function ChipStack({value,count,size}:{value:ChipGroup['value'];count:number;size:ChipSize}){
+  return <div className={`denomination denomination-${size}`} aria-label={`${count} фишек по ${value}`}>
+    <div className="chip-tower" aria-hidden="true">
+      {Array.from({length:Math.min(count,5)},(_,i)=><span key={i} className={`casino-chip casino-chip-${value}`} style={{'--layer':i} as CSSProperties}/>)}
+    </div>
+    <span className="chip-tally"><b>{count}</b><span>×{value}</span></span>
+  </div>;
+}
+function ChipRack({amount,size='small',maxGroups=5}:{amount:number;size?:ChipSize;maxGroups?:number}){
+  const breakdown=breakdownChips(amount);
+  const visible=breakdown.slice(0,maxGroups);
+  const hidden=breakdown.slice(maxGroups);
+  const summary=breakdown.map(({value,count})=>`${count} по ${value}`).join(', ') || 'фишек нет';
+  return <div className={`chip-rack chip-rack-${size}`} role="img" aria-label={`Всего ${amount}: ${summary}`} title={summary}>
+    {visible.length?visible.map(({value,count})=><ChipStack key={value} value={value} count={count} size={size}/>):<span className="chips-empty">0</span>}
+    {hidden.length>0&&<span className="extra-denoms">+{hidden.length}</span>}
+  </div>;
+}
 const load = <T,>(key:string,fallback:T):T => {try {const raw=localStorage.getItem(key);return raw?JSON.parse(raw) as T:fallback;}catch{return fallback;}};
 function loadGame():GameState {
   const s=load<GameState|null>(GAME_KEY,null);
@@ -79,12 +101,18 @@ const seatCoords:Record<number,{x:number;y:number}[]>={
   4:[{x:15,y:34},{x:34,y:9},{x:66,y:9},{x:85,y:34}],
   5:[{x:11,y:44},{x:25,y:13},{x:50,y:7},{x:75,y:13},{x:89,y:44}]
 };
-function Opponent({game,id,seat,action}:{game:GameState;id:string;seat:{x:number;y:number};action?:string}){
+function betCoordinates(seat:{x:number;y:number}){
+  return {x:seat.x+(50-seat.x)*.37,y:seat.y+(53-seat.y)*.35};
+}
+function Opponent({game,id,seat,action,onInspect}:{game:GameState;id:string;seat:{x:number;y:number};action?:string;onInspect:(id:string)=>void}){
   const p=game.players[id];const out=p.stack===0&&p.hand.length===0;
   return <div className={`table-opponent ${game.actor===id?'acting':''} ${p.folded||out?'folded':''}`} style={{'--seat-x':`${seat.x}%`,'--seat-y':`${seat.y}%`} as CSSProperties}>
-    <span className="opponent-avatar">{p.name.slice(0,1)}</span><strong>{p.name}{game.button===id?' · D':''}</strong><span className="opponent-stack">{out?'Выбыл':p.folded?'Пас':money(p.stack)}</span>
+    <span className="opponent-avatar">{p.name.slice(0,1)}</span><strong>{p.name}{game.button===id?' · D':''}</strong>
+    <button className="opponent-bankroll" onClick={()=>onInspect(id)} aria-label={`Фишки ${p.name}: ${money(p.stack)}, показать по номиналам`}>
+      <span className="opponent-stack">{out?'Выбыл':money(p.stack)}</span>
+      {!out&&<ChipRack amount={p.stack} size="mini" maxGroups={2}/>}
+    </button>
     {p.hand.length>0&&<div className="opponent-cards">{p.hand.map((c,i)=><CardFace key={`${game.handNumber}-${i}`} card={c} small hidden={!game.revealBot||p.folded}/>)}</div>}
-    {p.streetBet>0&&<span className="opponent-bet">{money(p.streetBet)}</span>}
     {action&&<span key={action} className="seat-action opponent-action">{action}</span>}
   </div>;
 }
@@ -95,37 +123,59 @@ function GameTable({game,setGame,onExit}:{game:GameState;setGame:Dispatch<SetSta
   const [raise,setRaise]=useState(40);
   const [speed,setSpeed]=useState<'normal'|'fast'>(()=>load<'normal'|'fast'>('pocket-v4-speed','normal')==='fast'?'fast':'normal');
   const [notice,setNotice]=useState<{seq:number;player:string;message:string}|null>(null);
-  const [flight,setFlight]=useState<{seq:number;fromX:string;fromY:string;win:boolean}|null>(null);
+  type ChipFlight = {key:string;from:{x:number;y:number};to:{x:number;y:number};kind:'bet'|'collect'|'award'};
+  const [flights,setFlights]=useState<ChipFlight[]>([]);
+  const [inspected,setInspected]=useState<string|null>(null);
+  const motionKey=useRef(0);
   const previousGame=useRef(game);
   useEffect(()=>{try{localStorage.setItem('pocket-v4-speed',JSON.stringify(speed));}catch{}},[speed]);
   useEffect(()=>{
     const previous=previousGame.current;
     previousGame.current=game;
-    if(game.handNumber!==previous.handNumber || game.history[0]===previous.history[0])return;
-    const event=game.history.find(item=>/ · (?:фолд|колл|рейз|чек)(?: |$)/.test(item));
-    if(event){
-      const [name,message]=event.split(' · ');
-      const id=game.order.find(playerId=>game.players[playerId].name===name);
-      setNotice({seq:Date.now(),player:id??'hero',message});
-      if(id && game.pot>previous.pot){
-        const n=game.order.filter(v=>v!=='hero').indexOf(id);
-        const coord=id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][Math.max(0,n)];
-        setFlight({seq:Date.now(),fromX:`${coord.x}%`,fromY:`${coord.y}%`,win:false});
+    if(game.handNumber!==previous.handNumber)return;
+    if(game.history[0]!==previous.history[0]) {
+      const event=game.history.find(item=>/ · (?:фолд|колл|рейз|чек)(?: |$)/.test(item));
+      if(event){
+        const [name,message]=event.split(' · ');
+        const id=game.order.find(playerId=>game.players[playerId].name===name);
+        setNotice({seq:Date.now(),player:id??'hero',message});
       }
     }
-    if(game.result && !previous.result && game.result.startsWith('Ты')){
-      setFlight({seq:Date.now()+1,fromX:'50%',fromY:'50%',win:true});
+    const seats=game.order.filter(id=>id!=='hero');
+    const coord=(id:string)=>id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][seats.indexOf(id)];
+    const motions:ChipFlight[]=[];
+    const add=(from:{x:number;y:number},to:{x:number;y:number},kind:ChipFlight['kind'])=>motions.push({key:`${++motionKey.current}`,from,to,kind});
+    if(game.result&&!previous.result&&previous.pot>0){
+      const winners=game.order.filter(id=>game.players[id].stack>previous.players[id].stack);
+      const targets=winners.length?winners:[game.result.startsWith('Ты')?'hero':seats[0]];
+      targets.forEach(id=>add({x:50,y:48},coord(id),'award'));
+    } else if(game.street!==previous.street && game.pot>0){
+      previous.order.forEach(id=>{
+        if(previous.players[id].streetBet>0)add(betCoordinates(coord(id)),{x:50,y:44},'collect');
+      });
+    } else if(game.pot>previous.pot){
+      game.order.forEach(id=>{
+        if(game.players[id].streetBet>previous.players[id].streetBet)add(coord(id),betCoordinates(coord(id)),'bet');
+      });
     }
+    if(motions.length)setFlights(motions);
   },[game]);
+  useEffect(()=>{
+    if(!flights.length)return;
+    const timeout=window.setTimeout(()=>setFlights([]),speed==='fast'?420:880);
+    return ()=>window.clearTimeout(timeout);
+  },[flights,speed]);
   useEffect(()=>{
     if(!notice)return;
     const timeout=window.setTimeout(()=>setNotice(value=>value?.seq===notice.seq?null:value),speed==='fast'?480:1050);
     return ()=>window.clearTimeout(timeout);
   },[notice,speed]);
   const hero=game.players.hero;
+  const onStreet=game.result?0:collectedPot(game.pot,game.order.map(id=>game.players[id].streetBet));
   const toCall=amountToCall(game,'hero');
   const minRaise=Math.min(minRaiseTo(game),maxRaiseTo(game,'hero'));
   const maxRaise=maxRaiseTo(game,'hero');
+  const boundedRaise=Math.min(maxRaise,Math.max(minRaise,Math.floor(raise || minRaise)));
   const canRaise=maxRaise>game.currentBet&&maxRaise>hero.streetBet;
   const heroTurn=game.actor==='hero'&&!game.result;
   useEffect(()=>{setRaise(minRaise);setRaiseOpen(false);},[game.handNumber,game.street,game.currentBet,minRaise]);
@@ -134,7 +184,7 @@ function GameTable({game,setGame,onExit}:{game:GameState;setGame:Dispatch<SetSta
     const id=game.actor;const timeout=setTimeout(()=>setGame(s=>s.actor===id?act(s,id,botMove(s,id)):s),speed==='fast'?140:650);
     return ()=>clearTimeout(timeout);
   },[game,setGame,speed]);
-  const submit=(kind:'fold'|'call'|'check'|'raise')=>{setGame(s=>act(s,'hero',{kind,to:kind==='raise'?Math.min(maxRaise,Math.max(minRaise,Math.floor(raise))):undefined}));setRaiseOpen(false);};
+  const submit=(kind:'fold'|'call'|'check'|'raise')=>{setGame(s=>act(s,'hero',{kind,to:kind==='raise'?boundedRaise:undefined}));setRaiseOpen(false);};
   const startNew=()=>{
     if((game.handsFinished>0||game.handNumber>1||hero.stack!==1000)&&!window.confirm('Начать новый стол? Текущий матч будет заменён.'))return;
     setGame(newMatch(seats));setSheet(null);setRaiseOpen(false);
@@ -142,21 +192,42 @@ function GameTable({game,setGame,onExit}:{game:GameState;setGame:Dispatch<SetSta
   return <section className={`game-screen motion-${speed}`}>
     <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>Texas Hold’em</strong><span>{streetName[game.street]} · 10/20 · #{game.handNumber}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>setSheet('history')}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSeats(game.opponentCount);setSheet('settings');}}><Icon name="settings"/></button></div>
     <div className={`table-stage seats-${game.opponentCount}`}>
-      <div className="table-felt"><div className="table-felt-inner"/></div>
-      {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seatCoords[game.opponentCount][i]} action={notice?.player===id?notice.message:undefined}/>)}
-      <div className="table-center"><span className="pot-label">БАНК</span><strong className="pot-number" key={`${game.handNumber}-${game.pot}`}>{money(game.pot)}</strong><div className="community-cards">{Array.from({length:5},(_,i)=><CardFace key={`${game.handNumber}-${i}-${game.board[i]?cardText(game.board[i]):'empty'}`} card={game.board[i]}/>)}</div></div>
-      {flight&&<div key={flight.seq} className={`chip-flight ${flight.win?'chip-win':''}`} style={{'--flight-from-x':flight.fromX,'--flight-from-y':flight.fromY} as CSSProperties} aria-hidden="true"><i/><i/><i/></div>}
+      <div className="table-felt"><div className="table-felt-inner"/><div className="table-grain"/></div>
+      {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seatCoords[game.opponentCount][i]} action={notice?.player===id?notice.message:undefined} onInspect={setInspected}/>)}
+      {game.order.map(id=>{
+        const player=game.players[id];
+        if(player.streetBet<=0||game.result)return null;
+        const coords= id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][game.order.filter(v=>v!=='hero').indexOf(id)];
+        const pos=betCoordinates(coords);
+        return <div key={`bet-${id}`} className={`wager-stack wager-${id==='hero'?'hero':'opponent'}`} style={{'--bet-x':`${pos.x}%`,'--bet-y':`${pos.y}%`} as CSSProperties}>
+          <ChipRack amount={player.streetBet} size="bet" maxGroups={3}/>
+          <span className="wager-total">{money(player.streetBet)}</span>
+        </div>;
+      })}
+      <div className="table-center"><span className="pot-label">{game.result?'РАЗЫГРАНО':'ОБЩИЙ БАНК'}</span><strong className="pot-number" key={`${game.handNumber}-${game.pot}`}>{money(game.pot)}</strong>
+        {onStreet>0&&<div className="collected-stack"><ChipRack amount={onStreet} size="large"/></div>}
+        <div className="community-cards">{Array.from({length:5},(_,i)=><CardFace key={`${game.handNumber}-${i}-${game.board[i]?cardText(game.board[i]):'empty'}`} card={game.board[i]}/>)}</div>
+      </div>
+      {flights.map(f=><div key={f.key} className={`chip-flight-real chip-motion-${f.kind}`} style={{'--start-x':`${f.from.x}%`,'--start-y':`${f.from.y}%`,'--end-x':`${f.to.x}%`,'--end-y':`${f.to.y}%`} as CSSProperties} aria-hidden="true"><i/><i/><i/></div>)}
       <span className="table-event" key={notice?.seq??'none'} role="status" aria-live="polite">{notice?`${game.players[notice.player]?.name??'Игрок'} · ${notice.message}`:''}</span>
-      <div className={`table-hero ${heroTurn?'acting':''}`}><div className="hero-name"><span>ТЫ {game.button==='hero'?'· D':''}</span><strong>{money(hero.stack)}</strong></div><div className="hero-cards">{hero.hand.map((c,i)=><CardFace key={`${game.handNumber}-${i}`} card={c}/>)}</div>{notice?.player==='hero'&&<span className="seat-action hero-action">{notice.message}</span>}{hero.streetBet>0&&<span className="hero-bet">Ставка {money(hero.streetBet)}</span>}</div>
-      {game.result&&<div className="end-overlay" key={`${game.handNumber}-${game.result}`} role="status"><span className="result-emblem">{game.result.startsWith('Ты')?'♠':'◆'}</span><strong>{game.result.startsWith('Ты')?'Выигрыш!':game.result.startsWith('Твоя доля')?'Банк разделён':'Раздача окончена'}</strong><span>{game.result}</span></div>}
+      <div className={`table-hero ${heroTurn?'acting':''}`}>
+        <button className="hero-bankroll" onClick={()=>setInspected('hero')} aria-label={`Твой стек ${money(hero.stack)} фишек, подробнее`}><span>ТЫ {game.button==='hero'?'· D':''}</span><strong>{money(hero.stack)}</strong><ChipRack amount={hero.stack} size="small" maxGroups={3}/></button>
+        <div className="hero-cards">{hero.hand.map((card,i)=><CardFace key={`${game.handNumber}-${i}`} card={card} small/>)}</div>
+        {notice?.player==='hero'&&<span key={notice.seq} className="seat-action hero-action">{notice.message}</span>}
+      </div>
     </div>
+    {game.result&&<div className="end-overlay"><span className="result-emblem">♠</span><strong>{game.result}</strong><span>{game.matchOver?'Матч завершён. Можно начать новый.':'Раздача завершена, стеки сохранены.'}</span></div>}
     <div className="action-dock">
       {game.result?<button className="big-primary" onClick={()=>setGame(s=>nextHand(s))}>{game.matchOver?'Новый матч':'Следующая раздача'} <Icon name="chevron" size={18}/></button>:
       <><div className="action-caption"><span>{heroTurn?'Твой ход':game.actor?`${game.players[game.actor]?.name??'Соперник'} думает…`:'Продолжаем раздачу'}</span><strong>{heroTurn?toCall?`К коллу ${money(toCall)}`:'Можно сделать чек':''}</strong></div>
-      {raiseOpen&&canRaise&&<div className="raise-panel"><div><span>Рейз до</span><label className="raise-input-label"><input aria-label="Точный размер рейза" inputMode="numeric" type="number" min={minRaise} max={maxRaise} step="1" value={raise} onChange={e=>{if(e.target.value!=='')setRaise(Number(e.target.value));}}/><span>фишек</span></label></div><input type="range" aria-label="Размер рейза" min={minRaise} max={maxRaise} step={1} value={Math.min(maxRaise,Math.max(minRaise,raise))} onChange={e=>setRaise(Number(e.target.value))}/><div className="raise-presets"><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',.5))}>½ банка</button><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',1))}>Банк</button><button onClick={()=>setRaise(maxRaise)}>Олл-ин</button></div></div>}
-      <div className="table-actions"><button className="action-fold" disabled={!heroTurn} onClick={()=>submit('fold')}>Фолд</button><button className="action-call" disabled={!heroTurn} onClick={()=>submit(toCall?'call':'check')}>{toCall?`Колл ${money(toCall)}`:'Чек'}</button><button className="action-raise" disabled={!heroTurn||!canRaise} onClick={()=>raiseOpen?submit('raise'):setRaiseOpen(true)}>{raiseOpen?'Подтвердить':'Рейз'}</button></div>
-      {raiseOpen&&<button className="cancel-raise" onClick={()=>setRaiseOpen(false)}>Отменить рейз</button>}</>}
+      <div className="table-actions"><button className="action-fold" disabled={!heroTurn} onClick={()=>submit('fold')}>Фолд</button><button className="action-call" disabled={!heroTurn} onClick={()=>submit(toCall?'call':'check')}>{toCall?`Колл ${money(toCall)}`:'Чек'}</button><button className="action-raise" disabled={!heroTurn||!canRaise} onClick={()=>setRaiseOpen(true)}>Рейз</button></div></>}
     </div>
+    {raiseOpen&&canRaise&&<div className="sheet-scrim raise-scrim" onClick={()=>setRaiseOpen(false)}><section className="raise-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Выбор размера рейза"><div className="raise-dialog-head"><div><span className="small-muted">Твой рейз</span><h2>Выбери размер</h2></div><button className="icon-button" aria-label="Закрыть окно рейза" onClick={()=>setRaiseOpen(false)}><Icon name="close"/></button></div><div className="raise-summary"><div><span>К коллу</span><strong>{money(toCall)}</strong></div><div><span>Мин. рейз</span><strong>{money(minRaise)}</strong></div><div><span>Макс.</span><strong>{money(maxRaise)}</strong></div></div><div className="raise-panel"><div><span>Рейз до</span><label className="raise-input-label"><input aria-label="Точный размер рейза" autoFocus inputMode="numeric" type="number" min={minRaise} max={maxRaise} step="1" value={boundedRaise} onChange={e=>{if(e.target.value!=='')setRaise(Number(e.target.value));}}/><span>фишек</span></label></div><input type="range" aria-label="Размер рейза" min={minRaise} max={maxRaise} step={1} value={boundedRaise} onChange={e=>setRaise(Number(e.target.value))}/><div className="raise-presets"><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',.5))}>½ банка</button><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',1))}>Банк</button><button onClick={()=>setRaise(maxRaise)}>Олл-ин</button></div><ChipRack amount={boundedRaise} size="small" maxVisible={12}/></div><div className="raise-dialog-actions"><button className="ghost-button" onClick={()=>setRaiseOpen(false)}>Отмена</button><button className="big-primary" onClick={()=>submit('raise')}>Подтвердить рейз</button></div></section></div>}
+    {inspected&&game.players[inspected]&&<div className="sheet-scrim" onClick={()=>setInspected(null)}><section className="bottom-sheet chips-detail-sheet" role="dialog" aria-modal="true" aria-label="Разбивка фишек по номиналам" onClick={e=>e.stopPropagation()}>
+      <div className="sheet-head"><h2>{game.players[inspected].name} · {money(game.players[inspected].stack)}</h2><button className="icon-button" aria-label="Закрыть" onClick={()=>setInspected(null)} autoFocus><Icon name="close"/></button></div>
+      <ChipRack amount={game.players[inspected].stack} size="large"/>
+      <p className="chip-sheet-caption">Фишки можно разменивать. Сумма всех номиналов равна стеку игрока.</p>
+    </section></div>}
     {sheet&&<div className="sheet-scrim" onClick={()=>setSheet(null)}><section className="bottom-sheet" onKeyDown={e=>{if(e.key==='Escape')setSheet(null);}} role="dialog" aria-modal="true" aria-label={sheet==='settings'?'Настройки стола':'История раздачи'} onClick={e=>e.stopPropagation()}>
       <div className="sheet-head"><h2>{sheet==='settings'?'Настройки стола':'История раздачи'}</h2><button className="icon-button" autoFocus aria-label="Закрыть" onClick={()=>setSheet(null)}><Icon name="close"/></button></div>
       {sheet==='settings'?<><p className="sheet-hint">Новый матч заменит текущую игру.</p><div className="setting-label">Скорость игры</div><div className="speed-picker" role="group" aria-label="Скорость игры"><button aria-pressed={speed==='normal'} className={speed==='normal'?'active':''} onClick={()=>setSpeed('normal')}>Обычная</button><button aria-pressed={speed==='fast'} className={speed==='fast'?'active':''} onClick={()=>setSpeed('fast')}>Быстрая</button></div><div className="setting-label">Количество соперников</div><div className="seat-picker">{[1,2,3,4,5].map(n=><button key={n} className={seats===n?'active':''} aria-pressed={seats===n} onClick={()=>setSeats(n)}>{n}</button>)}</div><button className="big-primary" onClick={startNew}>Новый стол · {playerCountLabel(seats+1)}</button></>:
@@ -231,7 +302,7 @@ export default function App(){
   const navigate=(to:Page)=>{setPage(to);window.scrollTo({top:0,behavior:'instant'});};
   const openStudy=(id:string)=>{setSession({...emptySession,moduleId:id});navigate('academy');};
   return <div className={`app-shell ${page==='play'?'playing':''}`}>
-    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 0.4 · только условные фишки</small></aside>}
+    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 0.5 · только условные фишки</small></aside>}
     <main className="app-main">{page!=='play'&&<Header page={page} onChange={navigate}/>}
       {page==='home'?<Home game={game} profile={profile} progress={progress} onChange={navigate} onStudy={openStudy}/>:
         page==='play'?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')}/>:

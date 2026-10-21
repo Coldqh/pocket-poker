@@ -89,3 +89,60 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 @keyframes incorrect-nudge{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
 @media(hover:hover){.action-call:hover,.big-primary:hover,.action-raise:hover{filter:brightness(1.065)}.module-row:hover,.learning-row:hover{background:#25392a}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.table-event:not(:empty){opacity:1!important}}
+
+/* POCKET 0.5 — felt, chip inventory and table-side betting */
+.game-screen{background:#101713}
+.table-stage{position:relative;flex:1;min-height:0;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at center,#1d3126 0%,#0f1915 62%,#0a0f0e 100%)}
+.table-felt{inset:auto;top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(92%,calc((100svh - 176px)*.76));height:auto;aspect-ratio:.76;border:clamp(7px,2vw,12px) solid #4a3020;border-radius:48% / 48%;background:#14442e url('./assets/felt-texture.svg') center / cover no-repeat;box-shadow:0 0 0 3px #98734b,0 0 0 6px #171c16,0 18px 26px #0009,inset 0 0 0 3px #254f39,inset 0 0 45px #06170c80}
+.table-felt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at 48% 36%,#91c39720,transparent 60%),radial-gradient(ellipse at center,transparent 35%,#04130b66 100%)}
+.table-felt-inner{inset:10px;border:2px solid #d8ebc31c;box-shadow:inset 0 0 0 1px #0b241a80}
+.table-grain{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:.19;background:repeating-linear-gradient(23deg,transparent 0px,transparent 3px,#ffffff0b 4px,#00000004 5px);mix-blend-mode:soft-light}
+.table-opponent{width:clamp(70px,18vw,112px);gap:2px;z-index:4}
+.table-opponent .opponent-avatar{width:28px;height:28px}
+.table-opponent>strong{font-size:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.opponent-bankroll{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;border:1px solid #7f9e7752;background:#112018db;border-radius:9px;padding:3px 2px;color:#f0e4c6;min-height:29px}
+.opponent-bankroll:active{background:#324332}
+.opponent-stack{font-weight:800;font-size:11px;font-variant-numeric:tabular-nums}
+.chip-rack{display:flex;align-items:flex-end;justify-content:center;flex-wrap:wrap;gap:4px;width:100%;font-variant-numeric:tabular-nums}
+.denomination{--disc:18px;min-width:26px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.chip-tower{width:var(--disc);height:calc(var(--disc) + 10px);position:relative;flex:none}
+.casino-chip{--layer:0;position:absolute;left:0;bottom:calc(var(--layer)*2px);display:block;width:var(--disc);height:var(--disc);border:2px dashed #f4f1d6;border-radius:50%;box-shadow:inset 0 0 0 2px #0005,0 2px 0 #0007,0 3px 4px #0006;transform:perspective(150px) rotateX(28deg)}
+.casino-chip::after{content:"";position:absolute;inset:3px;border:1px solid #ffffff99;border-radius:50%;box-shadow:inset 0 0 2px #0006}
+.casino-chip-500{background:radial-gradient(circle at 35% 30%,#a994d3,#492c78 70%)}
+.casino-chip-100{background:radial-gradient(circle at 35% 30%,#676e75,#1e2328 70%)}
+.casino-chip-25{background:radial-gradient(circle at 35% 30%,#83d3aa,#24734f 70%)}
+.casino-chip-5{background:radial-gradient(circle at 35% 30%,#f6aca4,#ba3337 70%)}
+.casino-chip-1{background:radial-gradient(circle at 35% 30%,#fff,#bfc8c4 70%);border-color:#515c57}
+.chip-tally{display:flex;align-items:baseline;justify-content:center;gap:1px;font-size:10px;color:#f3e6cd;font-weight:700;white-space:nowrap}
+.chip-tally b{font-size:11px}.chip-tally span{color:#b5cdb6}
+.chip-rack-mini{gap:2px}.denomination-mini{--disc:10px;min-width:24px;gap:0}.denomination-mini .chip-tower{height:15px}.denomination-mini .casino-chip{border-width:1px;box-shadow:0 1px 0 #0007;bottom:calc(var(--layer)*1px)}
+.denomination-mini .casino-chip::after{display:none}.denomination-mini .chip-tally{font-size:8px}.denomination-mini .chip-tally b{font-size:9px}
+.chip-rack-small{gap:3px}.denomination-small{--disc:14px;min-width:27px}.denomination-small .chip-tower{height:22px}.denomination-small .casino-chip{bottom:calc(var(--layer)*1.5px)}
+.chip-rack-large{gap:5px}.denomination-large{--disc:20px;min-width:31px}.denomination-large .chip-tower{height:30px}
+.chip-rack-bet{gap:2px}.denomination-bet{--disc:12px;min-width:22px}.denomination-bet .chip-tower{height:19px}.denomination-bet .casino-chip{bottom:calc(var(--layer)*1.5px);border-width:1px}.denomination-bet .chip-tally{font-size:8px}.denomination-bet .chip-tally b{font-size:9px}
+.extra-denoms{font-size:9px;color:#e7d9b2;padding-bottom:2px}.chips-empty{font-size:11px;color:#a7c2ac}
+.wager-stack{position:absolute;z-index:5;left:var(--bet-x);top:var(--bet-y);transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;max-width:95px;pointer-events:none;filter:drop-shadow(0 3px 3px #0009)}
+.wager-total{font-size:10px;line-height:1.1;font-weight:800;color:#fff0cd;text-shadow:0 2px 3px #000,0 0 5px #000;white-space:nowrap}
+.table-center{z-index:2;top:50%;width:max-content;max-width:95%;gap:5px}.pot-label{font-size:9px;color:#c9e5ce}.pot-number{font-size:22px;line-height:1.15;text-shadow:0 2px 4px #0b221c}.collected-stack{max-width:215px;margin:1px auto}.collected-stack .chip-rack{max-width:180px}.community-cards{margin-top:3px}
+.table-hero{z-index:7;bottom:2%;max-width:95%;width:max-content;min-width:214px;gap:8px;padding:8px 12px;display:flex;flex-wrap:nowrap;align-items:center;background:#111d17f2}
+.hero-bankroll{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;color:#edddbe;padding:0;max-width:170px;min-width:90px}
+.hero-bankroll>span{font-size:10px;font-weight:800;color:#b8d0b9}.hero-bankroll>strong{font-size:17px;line-height:1.1}.hero-bankroll .chip-rack{justify-content:flex-start}.hero-bankroll .chip-tower{height:17px}.hero-bankroll .chip-tally{font-size:9px}
+.hero-cards{flex-shrink:0;order:2}
+.chip-flight-real{position:absolute;z-index:10;left:var(--start-x);top:var(--start-y);pointer-events:none;transform:translate(-50%,-50%);animation:physical-chip-flight .65s cubic-bezier(.19,.65,.31,1) both}
+.chip-flight-real i{display:block;width:19px;height:8px;border-radius:50%;border:2px dashed #e8d9af;background:#33805f;box-shadow:0 2px 0 #173921}.chip-flight-real i+ i{margin-top:-3px}.chip-flight-real i:last-child{background:#6a527f}
+.chip-motion-award{animation-duration:.78s}.chip-motion-bet{animation-duration:.40s}
+@keyframes physical-chip-flight{0%{left:var(--start-x);top:var(--start-y);opacity:0;scale:.65}20%{opacity:1;scale:1}80%{opacity:1}100%{left:var(--end-x);top:var(--end-y);opacity:0;scale:.7}}
+.raise-scrim{z-index:95;align-items:center;padding:18px;overscroll-behavior:contain}
+.raise-dialog{width:min(100%,420px);max-height:calc(100dvh - 30px);overflow-y:auto;background:#16211b;color:#f2f2eb;border:1px solid #597158;border-radius:22px;padding:18px;box-shadow:0 24px 70px #000a;animation:dialog-appear .2s ease both}
+.raise-dialog-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.raise-dialog-head h2{font-size:24px;margin:3px 0 0}.raise-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:14px}
+.raise-summary>div{border:1px solid #405844;border-radius:10px;padding:8px 6px;background:#223128}.raise-summary span{font-size:10px;color:#9bb1a2}.raise-summary strong{display:block;margin-top:3px;font-size:17px;color:#ead3a8}
+.raise-dialog .raise-panel{background:#203126;border:1px solid #425747;padding:12px;margin-bottom:0}.raise-dialog .raise-panel input[type=range]{width:100%;accent-color:#dabb82}.raise-dialog .raise-input-label input{width:95px;max-width:100%;padding:7px;border:1px solid #566a53;border-radius:8px;color:#f5dfb0;background:#152019;font-size:17px;text-align:right}
+.raise-dialog .raise-presets button{min-height:44px}.raise-dialog .chip-rack{margin-top:12px}
+.raise-dialog-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:15px}.raise-dialog-actions .big-primary{padding:10px 6px;font-size:12px}.ghost-button{background:#2b3930;border:1px solid #516553;border-radius:12px;color:#e5eae2;font-weight:800;font-size:13px;min-height:49px}
+.chips-detail-sheet{display:flex;flex-direction:column;gap:12px}.chips-detail-sheet .chip-rack{justify-content:flex-start;gap:11px;margin:8px 0}.chips-detail-sheet .denomination-large{--disc:26px;min-width:45px}.chips-detail-sheet .denomination-large .chip-tower{height:37px}.chips-detail-sheet .chip-tally{font-size:13px}.chips-detail-sheet .chip-tally b{font-size:15px}.chip-sheet-caption{font-size:12px;color:#a7bbaa}
+@keyframes dialog-appear{from{opacity:.5;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+@media(min-width:701px){.table-felt{width:min(82%,650px);aspect-ratio:1.4}.table-hero{bottom:3%}.table-center{top:50%}.table-opponent{width:105px}.denomination-mini{--disc:13px}.table-opponent .opponent-bankroll{padding:4px}}
+@media(max-width:700px){.table-felt{width:min(92%,calc((100svh - 176px)*.76));aspect-ratio:.76;top:50%;bottom:auto;left:50%;right:auto;border-width:9px}.table-hero{bottom:1.5%}.table-center{top:49%}.table-opponent{width:74px}.wager-stack{max-width:70px}.wager-stack .chip-rack-bet{gap:1px}.denomination-bet{min-width:20px}.chip-flight-real{animation-duration:.4s}}
+@media(max-width:375px){.table-felt{width:min(91%,calc((100svh - 180px)*.76))}.table-hero{padding:7px 9px;min-width:200px}.hero-bankroll{min-width:82px}.table-hero .hero-cards .card-face{width:34px;height:47px}.table-center{top:49%}.community-cards{gap:3px}.community-cards .card-face{width:33px;height:46px}.table-opponent{width:67px}.opponent-bankroll{padding:2px 1px}.pot-number{font-size:20px}.denomination-large{--disc:17px;min-width:27px}.wager-stack{max-width:59px}}
+@media(max-height:690px){.table-felt{width:min(90%,calc((100svh - 170px)*.76));aspect-ratio:.76}.chip-rack-large .chip-tower{height:23px}.table-hero{bottom:1%}.game-toolbar{flex-basis:46px}}
+@media(prefers-reduced-motion:reduce){.chip-flight-real,.raise-dialog{animation:none!important}.chip-flight-real{display:none}}
