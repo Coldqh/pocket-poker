@@ -29,7 +29,9 @@ export function storyMotion(previous:StoryScene|null,current:StoryScene,fullRepl
  const potChanged=first?current.pot!==undefined:current.pot!==previous.pot;
  const chipsChanged=first?Boolean(current.heroBet||current.villainBet):current.heroBet!==previous.heroBet||current.villainBet!==previous.villainBet;
  const betting=current.type==='blinds'||current.type==='action-demo';
- // Chips enter the pot only when it is formed for the first time. Later\n // bet changes update the number, not the flying-chip animation.\n const moved=betting&&(current.pot??0)>0&&(fullReplay||!previous||(previous.pot??0)===0);
+ // Chips enter the pot only when it is formed for the first time. Later
+ // bet changes update the number, not the flying-chip animation.
+ const moved=betting&&(current.pot??0)>0&&(fullReplay||!previous||(previous.pot??0)===0);
  const delta=(current.pot??0)-(previous?.pot??0);
  return {
   hero:cardMotion(current.heroCards,previous?.heroCards,highlights,oldHighlights,false,false,first),
