@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateActio
 import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, hydrateGameChips, exchangeForBet, exchangePlayerChip, BOT_STYLES, SITNGO_HANDS_PER_LEVEL, type GameFormat, type BotDifficulty, type HandReplay, type Card, type GameState } from './engine';
 import { modules } from './lessons';
 import {storyLessons, getStoryLesson} from './story-lessons';
-import {STORY_KEY, hydrateStoryProgress, openStory, visitStoryScene, completeStory, closeStory, completedStoryCount, seenCount, type StoryProgress} from './story-progress';
+import {STORY_KEY, hydrateStoryProgress, openStory, visitStoryScene, completeStory, closeStory, completedStoryCount, type StoryProgress} from './story-progress';
 import StoryLesson from './StoryLesson';
 import AcademyStories from './AcademyStories';
 import PokerLab from './PokerLab';
@@ -407,15 +407,16 @@ export default function App(){
     setGame(newMatch(seats,chips,blind,difficulty,format));setStarted(true);setSetupPending(false);
   };
   const configureTable=()=>{setSetupPending(true);};
-    return <div className={`app-shell ${page==='play'?'playing':''}`}>
-    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Истории',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET STORY 2.3 · виртуальные фишки</small></aside>}
+    const isStory=page==='academy'&&Boolean(storyProgress.activeLesson);
+    return <div className={`app-shell ${page==='play'?'playing':''} ${isStory?'story-playing':''}`}>
+    {page!=='play'&&!isStory&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Истории',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET STORY 2.3 · виртуальные фишки</small></aside>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
-    <main className="app-main">{page!=='play'&&<Header onChange={navigate}/>}
+    <main className="app-main">{page!=='play'&&!isStory&&<Header onChange={navigate}/>}
       {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}}/>:
         page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
         page==='academy'?<Academy profile={profile} setProfile={setProfile} storyProgress={storyProgress} setStoryProgress={setStoryProgress} game={game}/>:
         <Stats game={game} progress={progress} storyProgress={storyProgress} career={career}/>}
     </main>
-    {page!=='play'&&<TabBar page={page} onChange={navigate}/>}
+    {page!=='play'&&!isStory&&<TabBar page={page} onChange={navigate}/>}
   </div>;
 }
