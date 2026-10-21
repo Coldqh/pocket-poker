@@ -35,6 +35,7 @@ export type GameState = {
   startingChips: ChipInventory; potChips: ChipInventory;
   smallBlind:number;bigBlind:number;botDifficulty:BotDifficulty;
   format:GameFormat;initialBlind:number;eliminated:PlayerId[];heroPlace:number|null;tournamentId:string;tournamentAward:number;
+  handStartingStacks:Record<PlayerId,number>;lastPot:number;lastPayouts:Record<PlayerId,number>;
   replayFrames:ReplayFrame[];replayArchive:HandReplay[];
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
@@ -103,14 +104,14 @@ function nextAround(s: GameState, index: number, pred: (id: PlayerId)=>boolean):
 }
 function clone(s: GameState): GameState {
   return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order], potChips:copyInventory(s.potChips),startingChips:copyInventory(s.startingChips),
-    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],eliminated:[...s.eliminated],replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
+    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],eliminated:[...s.eliminated],handStartingStacks:{...s.handStartingStacks},lastPayouts:{...s.lastPayouts},replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
 }
 function log(s:GameState, text:string) { s.history = [text, ...s.history].slice(0,40); }
 function snapshot(s:GameState,label:string){
-  const frame:ReplayFrame={label,street:s.street,board:s.board.map(cardText),pot:s.pot,players:s.order.map(id=>{
+  const frame:ReplayFrame={label,street:s.street,board:s.board.map(cardText),pot:s.result&&s.lastPot?s.lastPot:s.pot,players:s.order.map(id=>{
     const p=s.players[id];return {id,name:p.name,stack:p.stack,streetBet:p.streetBet,folded:p.folded,cards:(id==='hero'||s.revealBot&&!p.folded)?p.hand.map(cardText):[]};
   })};
-  s.replayFrames=[...s.replayFrames,frame].slice(-100);
+  s.replayFrames=[...s.replayFrames,frame].slice(-60);
 }
 function draw(s:GameState):Card {const c=s.deck.pop();if(!c)throw new Error('Deck empty');return c;}
 function collectStreetChips(s:GameState){
@@ -150,7 +151,8 @@ export function exchangeForBet(original:GameState,id:PlayerId,amount:number):Gam
 function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].hand.length===2);}
 function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory,bigBlind:number,botDifficulty:BotDifficulty,archive:HandReplay[],format:GameFormat='practice',initialBlind=bigBlind,eliminated:PlayerId[]=[],tournamentId=''):GameState {
   const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],chips:copyInventory(players[id].chips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
-    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,format,initialBlind,eliminated:[...eliminated],heroPlace:null,tournamentId,tournamentAward:0,replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
+    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,format,initialBlind,eliminated:[...eliminated],heroPlace:null,tournamentId,tournamentAward:0,
+    handStartingStacks:Object.fromEntries(order.map(id=>[id,players[id].stack])),lastPot:0,lastPayouts:{},replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);
   if(seated.length<2 || s.players.hero.stack===0) {s.matchOver=true;s.result='Матч завершён.';s.street='showdown';return s;}
@@ -213,7 +215,7 @@ export function potFractionRaiseTo(s:GameState,id:PlayerId,fraction:number):numb
 
 function awardUncontested(s:GameState,winner:PlayerId) {
   collectStreetChips(s);
-  const total=s.pot;moveChips(s.potChips,s.players[winner].chips,total);s.players[winner].stack+=total;s.pot=0;
+  const total=s.pot;s.lastPot=total;s.lastPayouts={[winner]:total};moveChips(s.potChips,s.players[winner].chips,total);s.players[winner].stack+=total;s.pot=0;
   s.result=winner==='hero'?`Все сбросили карты — банк ${total} твой.`:`${s.players[winner].name} забирает банк ${total}.`;
   log(s,s.result);finishHand(s,winner==='hero',false);
 }
@@ -224,7 +226,12 @@ function finishHand(s:GameState,heroWon:boolean,tie:boolean) {
   if(s.format==='sitngo'){
     const stillAlive=s.order.filter(id=>s.players[id].stack>0);
     const knocked=s.order.filter(id=>s.players[id].stack===0&&!s.eliminated.includes(id));
-    if(knocked.includes('hero'))s.heroPlace=stillAlive.length+1;
+    if(knocked.includes('hero')){
+      const heroStarting=s.handStartingStacks.hero??0;
+      // Same-hand bustouts are ranked by their stack at the start of the hand.
+      // Equal starting stacks share a place; any tie-breaking depends on tournament policy.
+      s.heroPlace=stillAlive.length+1+knocked.filter(id=>(s.handStartingStacks[id]??0)>heroStarting).length;
+    }
     s.eliminated=[...s.eliminated,...knocked];
     if(s.matchOver){
       if(s.players.hero.stack>0&&stillAlive.length===1)s.heroPlace=1;
@@ -244,6 +251,8 @@ function showdown(s:GameState) {
   let previous=0,heroWon=false,heroTied=false,heroPayout=0;
   const orderFromButton=[...s.order.slice(s.buttonIndex+1),...s.order.slice(0,s.buttonIndex+1)];
   const heroBefore=s.players.hero.stack;
+  const beforeStacks=Object.fromEntries(s.order.map(id=>[id,s.players[id].stack]));
+  const settledPot=s.pot;
   for(const limit of limits) {
     const contributors=currentInHand(s).filter(id=>s.players[id].contributed>=limit);
     const value=(limit-previous)*contributors.length;previous=limit;
@@ -264,6 +273,9 @@ function showdown(s:GameState) {
     if(winners.includes('hero')) {heroWon=true;if(winners.length>1)heroTied=true;}
   }
   heroPayout=s.players.hero.stack-heroBefore;
+  s.lastPot=settledPot;
+  s.lastPayouts=Object.fromEntries(s.order.map(id=>[id,s.players[id].stack-beforeStacks[id]]).filter(([,amount])=>amount>0));
+  if(chipInventoryTotal(s.potChips)!==0)throw new Error('Банк не распределён полностью');
   s.pot=0;s.revealBot=true;
   const heroValue=values.hero?.name.toLowerCase()??'фолд';
   s.result=heroWon?(heroTied?`Твоя доля: ${heroPayout} фишек · ${heroValue}.`:`Ты выиграл ${heroPayout} фишек · ${heroValue}.`):`Вскрытие: ${heroValue}. Банк ушёл соперникам.`;
@@ -368,6 +380,9 @@ export function hydrateGameChips(s:GameState):GameState {
   if(s.tournamentAward===undefined)s.tournamentAward=0;
   if(!s.smallBlind)s.smallBlind=s.bigBlind/2;
   if(!s.botDifficulty)s.botDifficulty='normal';
+  if(!s.handStartingStacks)s.handStartingStacks=Object.fromEntries(s.order.map(id=>[id,s.players[id].stack+s.players[id].contributed]));
+  if(s.lastPot===undefined)s.lastPot=0;
+  if(!s.lastPayouts)s.lastPayouts={};
   if(!Array.isArray(s.replayFrames))s.replayFrames=[];
   if(!Array.isArray(s.replayArchive))s.replayArchive=[];
   if(!s.startingChips)s.startingChips=inventoryFromAmount(1000);
