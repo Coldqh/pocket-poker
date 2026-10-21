@@ -1,5 +1,7 @@
 /** Deterministic animated lessons. Every scene has a visual action and a short narration.
  * No random cards, knowledge gates or graded questions in Story Mode. */
+import {modules as legacyModules} from './lessons';
+
 export type StorySceneType = 'intro'|'deal'|'blinds'|'action-demo'|'board-reveal'|'compare'|'range'|'takeaway';
 export type StoryScene={
  id:string;type:StorySceneType;title:string;narration:string;
@@ -77,6 +79,16 @@ export const storyLessons:StoryLesson[]=[
   scene('takeaway','takeaway','Покер — игра дистанции','Нужны качество решений, разумный риск и достаточная выборка, а не одна удачная серия.',{heroCards:['A♠','A♥']})
  ]}
 ];
+// Keep the original substantive theory accessible on demand. The user sees
+// one animated point at a time, and can expand each supporting explanation.
+for(const lesson of storyLessons){
+ if(lesson.id==='firstmoves')continue;
+ const legacy=legacyModules.find(x=>x.id===lesson.id);
+ legacy?.theory.forEach((part,index)=>{
+  const visual=lesson.scenes[index+1];
+  if(visual&&!visual.note)visual.note=part.heading+' — '+part.text;
+ });
+}
 export const getStoryLesson=(id:string)=>storyLessons.find(lesson=>lesson.id===id);
 export function validStoryData(lessons:StoryLesson[]=storyLessons):boolean{
  const ids=new Set<string>();
