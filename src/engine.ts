@@ -1,25 +1,23 @@
-import { DEFAULT_STARTING_CHIPS, chipInventoryTotal, copyInventory, emptyInventory, inventoryFromAmount, moveChips, validStartingChips, type ChipInventory } from './chips.ts';
 export type Suit = '♠' | '♥' | '♦' | '♣';
 export type PlayerId = string;
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 export type Action = { kind: 'fold' | 'check' | 'call' | 'raise'; to?: number };
 export type Card = { rank: number; suit: Suit };
 export type Player = {
-  id: PlayerId; name: string; stack: number; chips: ChipInventory; hand: Card[];
+  id: PlayerId; name: string; stack: number; hand: Card[];
   streetBet: number; contributed: number; acted: boolean; folded: boolean; raiseLocked: boolean;
 };
 export type HandValue = { score: number[]; name: string };
 export type GameState = {
   deck: Card[]; board: Card[]; players: Record<PlayerId, Player>; order: PlayerId[];
   opponentCount: number; pot: number; currentBet: number; minRaise: number;
-  startingChips: ChipInventory; potChips: ChipInventory;
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
   history: string[]; result: string | null; revealBot: boolean; matchOver: boolean;
 };
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
 const BIG_BLIND = 20;
-
+const STARTING_STACK = 1000;
 const NAMES = ['Старшая карта', 'Пара', 'Две пары', 'Сет', 'Стрит', 'Флеш', 'Фулл-хаус', 'Каре', 'Стрит-флеш'];
 const BOT_NAMES = ['Мартин', 'Софи', 'Алекс', 'Ника', 'Лео'];
 export const cardRank = (rank: number) => ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A' } as Record<number, string>)[rank] ?? String(rank);
@@ -80,20 +78,19 @@ function nextAround(s: GameState, index: number, pred: (id: PlayerId)=>boolean):
   return null;
 }
 function clone(s: GameState): GameState {
-  return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order], potChips:copyInventory(s.potChips),startingChips:copyInventory(s.startingChips),
-    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),hand:[...s.players[id].hand]}])), history:[...s.history]};
+  return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order],
+    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],hand:[...s.players[id].hand]}])), history:[...s.history]};
 }
 function log(s:GameState, text:string) { s.history = [text, ...s.history].slice(0,40); }
 function draw(s:GameState):Card {const c=s.deck.pop();if(!c)throw new Error('Deck empty');return c;}
 function pay(s:GameState,id:PlayerId,amount:number) {
   const p=s.players[id],paid=Math.min(p.stack,Math.max(0,amount));
-  moveChips(p.chips,s.potChips,paid);
   p.stack-=paid;p.streetBet+=paid;p.contributed+=paid;s.pot+=paid;
 }
 function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].hand.length===2);}
-function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory):GameState {
+function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number):GameState {
   const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
-    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),currentBet:0,minRaise:BIG_BLIND,actor:null,button:order[buttonIndex],buttonIndex,
+    order,opponentCount:order.length-1,pot:0,currentBet:0,minRaise:BIG_BLIND,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);
   if(seated.length<2 || s.players.hero.stack===0) {s.matchOver=true;s.result='Матч завершён.';s.street='showdown';return s;}
@@ -111,20 +108,18 @@ function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:
   if(!s.actor) progress(s);
   return s;
 }
-export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTING_CHIPS):GameState {
-  const startingChips=validStartingChips(selectedChips)?copyInventory(selectedChips):copyInventory(DEFAULT_STARTING_CHIPS);
-  const startingStack=chipInventoryTotal(startingChips);
+export function newMatch(opponents=1):GameState {
   const count=Math.min(5,Math.max(1,Math.floor(opponents)));
   const order=['hero',...Array.from({length:count},(_,i)=>`bot-${i+1}`)];
-  const players=Object.fromEntries(order.map((id,i)=>[id,{id,name:i===0?'Ты':BOT_NAMES[i-1],stack:startingStack,chips:copyInventory(startingChips),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false} as Player]));
-  return beginHand(players,order,0,1,0,0,0,startingChips);
+  const players=Object.fromEntries(order.map((id,i)=>[id,{id,name:i===0?'Ты':BOT_NAMES[i-1],stack:STARTING_STACK,hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false} as Player]));
+  return beginHand(players,order,0,1,0,0,0);
 }
 export function nextHand(old:GameState):GameState {
   if (!old.result) return old;
-  if (old.matchOver) return newMatch(old.opponentCount,old.startingChips);
+  if (old.matchOver) return newMatch(old.opponentCount);
   const next=nextAround(old,old.buttonIndex,id=>old.players[id].stack>0);
-  if(!next)return newMatch(old.opponentCount,old.startingChips);
-  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties,old.startingChips);
+  if(!next)return newMatch(old.opponentCount);
+  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties);
 }
 export function amountToCall(s:GameState,id:PlayerId):number {
   const p=s.players[id];return Math.min(p.stack,Math.max(0,s.currentBet-p.streetBet));
@@ -150,7 +145,7 @@ export function potFractionRaiseTo(s:GameState,id:PlayerId,fraction:number):numb
 }
 
 function awardUncontested(s:GameState,winner:PlayerId) {
-  const total=s.pot;moveChips(s.potChips,s.players[winner].chips,total);s.players[winner].stack+=total;s.pot=0;
+  const total=s.pot;s.players[winner].stack+=total;s.pot=0;
   s.result=winner==='hero'?`Все сбросили карты — банк ${total} твой.`:`${s.players[winner].name} забирает банк ${total}.`;
   log(s,s.result);finishHand(s,winner==='hero',false);
 }
@@ -176,9 +171,9 @@ function showdown(s:GameState) {
     let best=values[eligible[0]];for(const id of eligible.slice(1))if(compareValues(values[id],best)>0)best=values[id];
     const winners=eligible.filter(id=>compareValues(values[id],best)===0);
     const portion=Math.floor(value/winners.length);
-    for(const id of winners){moveChips(s.potChips,s.players[id].chips,portion);s.players[id].stack+=portion;}
+    for(const id of winners)s.players[id].stack+=portion;
     let remainder=value-portion*winners.length;
-    for(const id of orderFromButton)if(remainder>0&&winners.includes(id)){moveChips(s.potChips,s.players[id].chips,1);s.players[id].stack++;remainder--;}
+    for(const id of orderFromButton)if(remainder>0&&winners.includes(id)){s.players[id].stack++;remainder--;}
     if(winners.includes('hero')) {heroWon=true;if(winners.length>1)heroTied=true;}
   }
   heroPayout=s.players.hero.stack-heroBefore;
@@ -262,15 +257,4 @@ export function botMove(s:GameState,id:PlayerId='bot-1'):Action {
   if(max>s.currentBet&&strength>.79&&random<.22)
     return {kind:'raise',to:Math.max(Math.min(minRaiseTo(s),max),Math.min(max,Math.floor(s.currentBet+s.pot*.35)))};
   return {kind:'call'};
-}
-
-/** Upgrades saved tables from earlier versions, retaining stacks and hands. */
-export function hydrateGameChips(s:GameState):GameState {
-  if(!s.startingChips)s.startingChips=inventoryFromAmount(s.order.length?1000:1000);
-  if(!s.potChips)s.potChips=inventoryFromAmount(s.pot||0);
-  for(const id of s.order){
-    const p=s.players[id];
-    if(!p.chips||chipInventoryTotal(p.chips)!==p.stack)p.chips=inventoryFromAmount(p.stack);
-  }
-  return s;
 }
