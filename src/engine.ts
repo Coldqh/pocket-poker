@@ -31,7 +31,6 @@ export type GameState = {
   history: string[]; result: string | null; revealBot: boolean; matchOver: boolean;
 };
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
-const BIG_BLIND = 20;
 
 const NAMES = ['Старшая карта', 'Пара', 'Две пары', 'Сет', 'Стрит', 'Флеш', 'Фулл-хаус', 'Каре', 'Стрит-флеш'];
 const BOT_NAMES = ['Мартин', 'Софи', 'Алекс', 'Ника', 'Лео'];

@@ -137,3 +137,36 @@ test('human explicitly changes chips for a call and those exact chips stay in st
  assert.equal(chipInventoryTotal(next.players.hero.streetChips),20);
  assert.equal(chipInventoryTotal(next.potChips)+next.order.reduce((total,id)=>total+chipInventoryTotal(next.players[id].streetChips),0),next.pot);
 });
+
+test('custom blinds and persistent replay snapshots preserve cards and pot',()=>{
+  let s=newMatch(2,undefined,50,'hard');
+  assert.equal(s.bigBlind,50);
+  assert.equal(s.smallBlind,25);
+  assert.equal(s.pot,75);
+  assert.equal(s.currentBet,50);
+  assert.equal(s.botDifficulty,'hard');
+  assert.equal(s.replayFrames[0].pot,75);
+  assert.ok(s.replayFrames[0].players.every(p=>p.id==='hero'||p.cards.length===0),'bot cards must not leak in live replay');
+  for(let i=0;i<120&&!s.result;i++){
+    const id=s.actor;
+    assert.ok(id);
+    const call=amountToCall(s,id);
+    if(id==='hero'&&call>0)s=exchangeForBet(s,id,call);
+    s=act(s,id,{kind:call>0?'call':'check'});
+    assert.ok(s.replayFrames.length>0);
+  }
+  assert.ok(s.result,'hand reaches a showdown');
+  assert.equal(s.replayArchive.length,1);
+  const saved=s.replayArchive[0];
+  assert.equal(saved.number,1);
+  assert.ok(saved.frames.length>=4);
+  assert.equal(saved.frames.at(-1).street,'showdown');
+  assert.ok(saved.frames.some(frame=>frame.board.length===5));
+  assert.ok(saved.frames.some(frame=>frame.players.some(player=>player.id.startsWith('bot')&&player.cards.length===2)));
+  s=nextHand(s);
+  assert.equal(s.handNumber,2);
+  assert.equal(s.bigBlind,50);
+  assert.equal(s.botDifficulty,'hard');
+  assert.equal(s.replayArchive.length,1);
+  assert.equal(s.replayArchive[0].frames.length,saved.frames.length);
+});
