@@ -1,4 +1,4 @@
-const CACHE = 'pocket-v7';
+const CACHE = 'pocket-v8';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./','./index.html','./manifest.webmanifest','./icon.svg'])).then(()=>self.skipWaiting()));
 });

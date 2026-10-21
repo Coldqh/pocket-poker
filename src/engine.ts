@@ -1,6 +1,17 @@
 import { DEFAULT_STARTING_CHIPS, canPayChips, chipInventoryTotal, copyInventory, emptyInventory, exchangeOneChip, inventoryFromAmount, makeChangeForAmount, moveChips, validStartingChips, type ChipInventory, type ChipValue } from './chips.ts';
 export type Suit = '♠' | '♥' | '♦' | '♣';
 export type PlayerId = string;
+export type BotDifficulty = 'easy'|'normal'|'hard';
+export type ReplayPlayer = {id:string;name:string;stack:number;streetBet:number;folded:boolean;cards:string[]};
+export type ReplayFrame = {label:string;street:Street;board:string[];pot:number;players:ReplayPlayer[]};
+export type HandReplay = {number:number;result:string;frames:ReplayFrame[]};
+export const BOT_STYLES:Record<string,{title:string;desc:string;looseness:number;aggression:number;bluff:number}> = {
+  'bot-1':{title:'Тайтовый',desc:'Выбирает сильные руки, редко ввязывается без преимущества',looseness:-.13,aggression:-.08,bluff:.04},
+  'bot-2':{title:'Коллирующий',desc:'Часто отвечает на ставки, редко повышает',looseness:.08,aggression:-.21,bluff:.03},
+  'bot-3':{title:'Агрессивный',desc:'Чаще ставит и оказывает давление',looseness:.03,aggression:.27,bluff:.18},
+  'bot-4':{title:'Осторожный',desc:'Ждёт выгодных ситуаций и защищает стек',looseness:-.07,aggression:-.14,bluff:.07},
+  'bot-5':{title:'Непредсказуемый',desc:'Чередует осторожную и агрессивную игру',looseness:.04,aggression:.15,bluff:.24}
+};
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 export type Action = { kind: 'fold' | 'check' | 'call' | 'raise'; to?: number };
 export type Card = { rank: number; suit: Suit };
@@ -13,6 +24,8 @@ export type GameState = {
   deck: Card[]; board: Card[]; players: Record<PlayerId, Player>; order: PlayerId[];
   opponentCount: number; pot: number; currentBet: number; minRaise: number;
   startingChips: ChipInventory; potChips: ChipInventory;
+  smallBlind:number;bigBlind:number;botDifficulty:BotDifficulty;
+  replayFrames:ReplayFrame[];replayArchive:HandReplay[];
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
   history: string[]; result: string | null; revealBot: boolean; matchOver: boolean;
@@ -81,9 +94,15 @@ function nextAround(s: GameState, index: number, pred: (id: PlayerId)=>boolean):
 }
 function clone(s: GameState): GameState {
   return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order], potChips:copyInventory(s.potChips),startingChips:copyInventory(s.startingChips),
-    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history]};
+    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
 }
 function log(s:GameState, text:string) { s.history = [text, ...s.history].slice(0,40); }
+function snapshot(s:GameState,label:string){
+  const frame:ReplayFrame={label,street:s.street,board:s.board.map(cardText),pot:s.pot,players:s.order.map(id=>{
+    const p=s.players[id];return {id,name:p.name,stack:p.stack,streetBet:p.streetBet,folded:p.folded,cards:(id==='hero'||s.revealBot&&!p.folded)?p.hand.map(cardText):[]};
+  })};
+  s.replayFrames=[...s.replayFrames,frame].slice(-100);
+}
 function draw(s:GameState):Card {const c=s.deck.pop();if(!c)throw new Error('Deck empty');return c;}
 function collectStreetChips(s:GameState){
   for(const id of s.order){
@@ -120,9 +139,9 @@ export function exchangeForBet(original:GameState,id:PlayerId,amount:number):Gam
   return s;
 }
 function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].hand.length===2);}
-function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory):GameState {
+function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory,bigBlind:number,botDifficulty:BotDifficulty,archive:HandReplay[]):GameState {
   const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],chips:copyInventory(players[id].chips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
-    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),currentBet:0,minRaise:BIG_BLIND,actor:null,button:order[buttonIndex],buttonIndex,
+    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);
   if(seated.length<2 || s.players.hero.stack===0) {s.matchOver=true;s.result='Матч завершён.';s.street='showdown';return s;}
@@ -133,27 +152,30 @@ function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:
   for(let pass=0;pass<2;pass++) for(const id of sequence)s.players[id].hand.push(draw(s));
   const sb=seated.length===2?s.button:nextAround(s,buttonIndex,id=>s.players[id].stack>0)!;
   const bb=nextAround(s,order.indexOf(sb),id=>s.players[id].stack>0)!;
-  pay(s,sb,10,true);pay(s,bb,BIG_BLIND,true);
+  pay(s,sb,s.smallBlind,true);pay(s,bb,s.bigBlind,true);
   s.currentBet=Math.max(s.players[sb].streetBet,s.players[bb].streetBet);
-  log(s,`Раздача №${handNumber}. Блайнды 10 / 20 · ${seated.length} игроков.`);
+  log(s,`Раздача №${handNumber}. Блайнды ${s.smallBlind} / ${s.bigBlind} · ${seated.length} игроков.`);
+  snapshot(s,`Начало · блайнды ${s.smallBlind}/${s.bigBlind}`);
   s.actor=nextAround(s,order.indexOf(bb),id=>canAct(s,id));
   if(!s.actor) progress(s);
   return s;
 }
-export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTING_CHIPS):GameState {
+export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTING_CHIPS,blind=20,difficulty:BotDifficulty='normal'):GameState {
+  const bigBlind=[4,10,20,50].includes(blind)?blind:20;
+  const botDifficulty:BotDifficulty=['easy','normal','hard'].includes(difficulty)?difficulty:'normal';
   const startingChips=validStartingChips(selectedChips)?copyInventory(selectedChips):copyInventory(DEFAULT_STARTING_CHIPS);
   const startingStack=chipInventoryTotal(startingChips);
   const count=Math.min(5,Math.max(1,Math.floor(opponents)));
   const order=['hero',...Array.from({length:count},(_,i)=>`bot-${i+1}`)];
   const players=Object.fromEntries(order.map((id,i)=>[id,{id,name:i===0?'Ты':BOT_NAMES[i-1],stack:startingStack,chips:copyInventory(startingChips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false} as Player]));
-  return beginHand(players,order,0,1,0,0,0,startingChips);
+  return beginHand(players,order,0,1,0,0,0,startingChips,bigBlind,botDifficulty,[]);
 }
 export function nextHand(old:GameState):GameState {
   if (!old.result) return old;
-  if (old.matchOver) return newMatch(old.opponentCount,old.startingChips);
+  if (old.matchOver) return newMatch(old.opponentCount,old.startingChips,old.bigBlind,old.botDifficulty);
   const next=nextAround(old,old.buttonIndex,id=>old.players[id].stack>0);
-  if(!next)return newMatch(old.opponentCount,old.startingChips);
-  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties,old.startingChips);
+  if(!next)return newMatch(old.opponentCount,old.startingChips,old.bigBlind,old.botDifficulty);
+  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties,old.startingChips,old.bigBlind,old.botDifficulty,old.replayArchive);
 }
 export function amountToCall(s:GameState,id:PlayerId):number {
   const p=s.players[id];return Math.min(p.stack,Math.max(0,s.currentBet-p.streetBet));
@@ -188,6 +210,8 @@ function finishHand(s:GameState,heroWon:boolean,tie:boolean) {
   s.handsFinished++;if(heroWon)s.heroWins++;if(tie)s.ties++;
   s.street='showdown';s.actor=null;
   s.matchOver=s.players.hero.stack===0 || s.order.filter(id=>s.players[id].stack>0).length<=1;
+  snapshot(s,s.result??'Конец раздачи');
+  s.replayArchive=[...s.replayArchive,{number:s.handNumber,result:s.result??'',frames:s.replayFrames}].slice(-25);
 }
 function showdown(s:GameState) {
   collectStreetChips(s);
@@ -230,6 +254,7 @@ function dealStreetCards(s:GameState) {
   else if(s.board.length===3){s.board.push(draw(s));s.street='turn';}
   else if(s.board.length===4){s.board.push(draw(s));s.street='river';}
   log(s,`${({flop:'Флоп',turn:'Тёрн',river:'Ривер'} as Record<string,string>)[s.street]}: ${s.board.map(cardText).join(' ')}`);
+  snapshot(s,`Открыт ${s.street}`);
 }
 function progress(s:GameState,lastActor?:PlayerId) {
   if(inHand(s).length===1){awardUncontested(s,inHand(s)[0]);return;}
@@ -240,7 +265,7 @@ function progress(s:GameState,lastActor?:PlayerId) {
     collectStreetChips(s);
     dealStreetCards(s);
     for(const id of s.order){s.players[id].streetBet=0;s.players[id].acted=false;s.players[id].raiseLocked=false;}
-    s.currentBet=0;s.minRaise=BIG_BLIND;
+    s.currentBet=0;s.minRaise=s.bigBlind;
     s.actor=nextAround(s,s.buttonIndex,id=>canAct(s,id));
     if(!s.actor)showdown(s);
     return;
@@ -253,7 +278,7 @@ export function act(original:GameState,id:PlayerId,action:Action):GameState {
   if(original.actor!==id||original.result||!canAct(original,id))return original;
   const s=clone(original),p=s.players[id];const deficit=Math.max(0,s.currentBet-p.streetBet);
   if(action.kind==='fold'){
-    p.folded=true;p.acted=true;log(s,`${p.name} · фолд`);progress(s,id);return s;
+    p.folded=true;p.acted=true;log(s,`${p.name} · фолд`);snapshot(s,`${p.name} · фолд`);progress(s,id);return s;
   }
   if(action.kind==='check'&&deficit!==0)return original;
   if(action.kind==='call'){
@@ -272,40 +297,51 @@ export function act(original:GameState,id:PlayerId,action:Action):GameState {
     else {for(const opp of inHand(s))if(opp!==id&&s.players[opp].stack>0&&s.players[opp].streetBet<goal){s.players[opp].raiseLocked ||= s.players[opp].acted;s.players[opp].acted=false;}}
     log(s,`${p.name} · рейз до ${goal}`);
   } else log(s,`${p.name} · чек`);
-  p.acted=true;progress(s,id);return s;
+  p.acted=true;snapshot(s,s.history[0]);progress(s,id);return s;
 }
 // Recreational bots have imperfect information: their own cards + public board only.
 // They are not solvers and their decisions are not instructionally authoritative.
 export function botMove(s:GameState,id:PlayerId='bot-1'):Action {
   if(s.actor!==id||id==='hero')return {kind:'check'};
-  const bot=s.players[id],toCall=amountToCall(s,id);
+  const p=s.players[id],toCall=amountToCall(s,id),style=BOT_STYLES[id]??BOT_STYLES['bot-1'];
   const potOdds=toCall/(s.pot+toCall||1);
   let strength:number;
   if(s.street==='preflop'){
-    const [a,b]=bot.hand.map(c=>c.rank).sort((x,y)=>y-x);
-    strength=.1+a/14*.25+b/14*.09+(a===b?.3:0)+(bot.hand[0].suit===bot.hand[1].suit?.06:0)+(Math.abs(a-b)===1?.035:0);
+    const [a,b]=p.hand.map(c=>c.rank).sort((x,y)=>y-x);
+    strength=.1+a/14*.25+b/14*.09+(a===b?.3:0)+(p.hand[0].suit===p.hand[1].suit?.06:0)+(Math.abs(a-b)===1?.035:0);
   }else{
-    const value=evaluateHand([...bot.hand,...s.board]);
+    const value=evaluateHand([...p.hand,...s.board]);
     strength=[.18,.34,.56,.76,.8,.86,.94,.975,.995][value.score[0]];
-    if(SUITS.some(suit=>[...bot.hand,...s.board].filter(c=>c.suit===suit).length===4))strength=Math.max(strength,.39);
+    if(SUITS.some(suit=>[...p.hand,...s.board].filter(c=>c.suit===suit).length===4))strength=Math.max(strength,.39);
   }
-  // Later bots are somewhat looser; bluff occasionally.
-  const personality=(Number(id.split('-')[1])||1)%3;
+  const level=s.botDifficulty==='hard'?.06:s.botDifficulty==='easy'?-.06:0;
+  const early=s.order.indexOf(id)<s.order.length/2?-.015:.015;
+  const rating=strength+style.looseness+level+early;
+  const pressure=(s.currentBet>0?toCall/(p.stack+toCall||1):0);
   const random=Math.random();
   const max=maxRaiseTo(s,id);
+  const raiseProbability=Math.max(.02,Math.min(.73,.24+style.aggression+level*.65));
+  const chanceToBluff=style.bluff*(s.botDifficulty==='hard'?1.25:s.botDifficulty==='easy'?.65:1);
   if(toCall===0){
-    if(max>s.currentBet&&strength>.58-personality*.04&&random<.31+personality*.07)
-      return {kind:'raise',to:Math.max(Math.min(minRaiseTo(s),max),Math.min(max,Math.floor(s.currentBet+s.pot*.5+BIG_BLIND)))};
+    if(max>s.currentBet&&((rating>.55&&random<raiseProbability)||(random<chanceToBluff*.3&&s.street!=='preflop'))){
+      return {kind:'raise',to:Math.max(Math.min(minRaiseTo(s),max),Math.min(max,Math.floor(s.currentBet+s.pot*(.42+style.aggression*.35)+s.bigBlind)))};
+    }
     return {kind:'check'};
   }
-  if(strength+personality*.025<potOdds+.12&&random>.15)return {kind:'fold'};
-  if(max>s.currentBet&&strength>.79&&random<.22)
-    return {kind:'raise',to:Math.max(Math.min(minRaiseTo(s),max),Math.min(max,Math.floor(s.currentBet+s.pot*.35)))};
+  if(rating+pressure*.06<potOdds+.1&&random>chanceToBluff)return {kind:'fold'};
+  if(max>s.currentBet&&((rating>.71&&random<raiseProbability*.68)||(rating>.4&&random<chanceToBluff*.26))){
+    return {kind:'raise',to:Math.max(Math.min(minRaiseTo(s),max),Math.min(max,Math.floor(s.currentBet+s.pot*(.35+style.aggression*.3)+s.bigBlind)))};
+  }
   return {kind:'call'};
 }
 
 /** Upgrades saved tables from earlier versions, retaining stacks and hands. */
 export function hydrateGameChips(s:GameState):GameState {
+  if(!s.bigBlind)s.bigBlind=20;
+  if(!s.smallBlind)s.smallBlind=s.bigBlind/2;
+  if(!s.botDifficulty)s.botDifficulty='normal';
+  if(!Array.isArray(s.replayFrames))s.replayFrames=[];
+  if(!Array.isArray(s.replayArchive))s.replayArchive=[];
   if(!s.startingChips)s.startingChips=inventoryFromAmount(1000);
   if(!s.potChips)s.potChips=inventoryFromAmount(s.pot||0);
   const migratingBets=s.order.some(id=>!s.players[id].streetChips);

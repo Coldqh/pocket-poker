@@ -70,3 +70,8 @@ npm run build
 ## 0.7 — physical chips and gameplay polish
 
 Player chips, current street wagers and collected pots retain exact denominations. Only an explicit exchange rearranges the human player's chips; bots and the dealer make change when needed to post blinds or divide the pot. Betting actions never silently recompose the player's stack. Academy felt has a compact aspect ratio, folded cards animate toward the muck and all card backs use a neutral POCKET monogram. The home screen is streamlined to one play action.
+
+
+## 0.8 — Poker Club
+
+Blinds (2/4, 5/10, 10/20, 25/50), 3 selectable bot difficulty levels, five consistent player personalities, and a persistent hand-history viewer with street-by-street snapshots. Open the clock/history icon at the table; inspect cards, board, stacks and pot at each decision. Up to 25 completed hands are kept locally. Existing tables stay playable with default 10/20 blinds.
