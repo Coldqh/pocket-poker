@@ -170,3 +170,53 @@ test('custom blinds and persistent replay snapshots preserve cards and pot',()=>
   assert.equal(s.replayArchive.length,1);
   assert.equal(s.replayArchive[0].frames.length,saved.frames.length);
 });
+
+import {tournamentBlind,tournamentPoints,SITNGO_HANDS_PER_LEVEL,BOT_STYLES} from '../src/engine.ts';
+test('Sit & Go blind progression is deterministic and practice tables stay fixed',()=>{
+ assert.equal(SITNGO_HANDS_PER_LEVEL,4);
+ assert.equal(tournamentBlind(20,1),20);
+ assert.equal(tournamentBlind(20,4),20);
+ assert.equal(tournamentBlind(20,5),40);
+ assert.equal(tournamentBlind(20,9),60);
+ assert.equal(tournamentBlind(50,13),200);
+ assert.equal(tournamentPoints(1),100);
+ assert.equal(tournamentPoints(2),45);
+ assert.equal(tournamentPoints(3),20);
+ assert.equal(tournamentPoints(4),0);
+ assert.equal(Object.keys(BOT_STYLES).length,5);
+ const sitngo=newMatch(3,undefined,10,'easy','sitngo');
+ const practice=newMatch(3,undefined,10,'easy','practice');
+ assert.equal(sitngo.format,'sitngo');
+ assert.equal(practice.format,'practice');
+ assert.equal(sitngo.initialBlind,10);
+ assert.equal(sitngo.bigBlind,10);
+ assert.equal(sitngo.eliminated.length,0);
+ assert.ok(sitngo.tournamentId);
+});
+test('Sit & Go ends with an actual placement and score that does not mint chips',()=>{
+ const starting={500:0,100:2,25:0,5:0,1:0};
+ let s=newMatch(1,starting,20,'easy','sitngo');
+ const id=s.tournamentId;
+ let levels=new Set([s.bigBlind]);
+ for(let step=0;step<2000&&!s.matchOver;step++){
+   if(s.result){
+     s=nextHand(s);
+     levels.add(s.bigBlind);
+     assert.equal(s.tournamentId,id);
+     assert.equal(s.format,'sitngo');
+     continue;
+   }
+   const actor=s.actor;
+   assert.ok(actor);
+   const action=actor==='hero'?{kind:'fold'}:{kind:amountToCall(s,actor)>0?'call':'check'};
+   s=act(s,actor,action);
+   assert.equal(s.order.reduce((total,p)=>total+s.players[p].stack,0)+s.pot,400);
+ }
+ assert.equal(s.matchOver,true,'game should end at a terminal placement');
+ assert.ok(levels.size>1,'blind levels should increase before elimination');
+ assert.equal(s.heroPlace,2);
+ assert.equal(s.tournamentAward,45);
+ assert.equal(s.eliminated.includes('hero'),true);
+ assert.equal(s.replayArchive.length>0,true);
+ assert.equal(s.replayArchive.at(-1).frames.at(-1).street,'showdown');
+});

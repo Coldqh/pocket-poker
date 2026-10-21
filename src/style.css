@@ -252,3 +252,29 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .replay-controls button{display:flex;justify-content:center;align-items:center;gap:8px;background:#314937;color:#f2e9d5;border:1px solid #6c8a69;border-radius:11px;min-height:46px;font-weight:700}
 .replay-controls button:disabled{opacity:.3}
 @media(max-width:380px){.replay-seats{grid-template-columns:repeat(2,minmax(0,1fr))}.setup-rule-grid{gap:5px}}
+
+/* POCKET 0.9 — Sit & Go selector and tournament career */
+.mode-picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:17px}
+.mode-picks button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:5px;min-height:76px;padding:15px 12px;border:1px solid #46604c;background:#1f3227;border-radius:15px;color:#e8efe5}
+.mode-picks button.active{background:#394a34;border-color:#e4c48d;box-shadow:inset 0 0 0 1px #e4c48d22}
+.mode-picks strong{font-size:14px}.mode-picks small{font-size:11px;line-height:1.4;color:#b5c8b8}
+.tournament-start-note{color:#c0d0c1;font-size:12px;line-height:1.5;padding:12px 13px;background:#1c3023;border-left:3px solid #d8c08b;margin:-3px 0 16px}
+.tournament-standings{display:flex;flex-direction:column;gap:8px;border:1px solid #475e4b;background:#17271f;border-radius:13px;padding:12px;margin-bottom:13px}
+.tournament-standings>strong{font-size:15px;color:#ead4a0}.tournament-standings>span{font-size:11px;color:#bed2bd}
+.tournament-standings>div{margin-top:4px;max-height:170px;overflow:auto}
+.tournament-standings p{display:flex;align-items:center;justify-content:space-between;margin:0;padding:8px 2px;border-top:1px solid #50685155;font-size:12px}
+.tournament-standings p>b{font-size:12px;color:#ebdfc6}
+.tourney-finish{display:flex;flex-direction:column;align-items:center;gap:5px;color:#ead7a5;margin:8px 0}
+.tourney-finish b{font-size:19px}.tourney-finish span{font-size:13px}
+.career-stats{margin-top:30px;display:flex;flex-direction:column;gap:13px}
+.career-stats>h2{font-size:20px;margin-bottom:0}
+.career-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.career-metrics>div{padding:16px 9px;border:1px solid #435b49;background:#1a2e23;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.career-metrics strong{font-size:26px;color:#efd5a1;font-variant-numeric:tabular-nums}
+.career-metrics small{color:#abbfae;font-size:11px}
+.career-missions,.career-results{border:1px solid #374e3c;border-radius:15px;padding:13px 15px;background:#17261e}
+.career-missions h3,.career-results h3{font-size:14px;margin:0 0 11px}
+.career-missions p{font-size:13px;color:#a7b7a8;margin:6px 0}
+.career-missions p.achieved{color:#e8d9b0}
+.career-results>div{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #ffffff16;padding:10px 0;font-size:13px}
+.career-results b{color:#e2c68d}
