@@ -92,7 +92,7 @@ function pay(s:GameState,id:PlayerId,amount:number) {
 }
 function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].hand.length===2);}
 function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory):GameState {
-  const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
+  const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],chips:copyInventory(players[id].chips),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
     order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),currentBet:0,minRaise:BIG_BLIND,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);

@@ -20,3 +20,34 @@ test('pot chips and uncollected bets add up to the displayed total', () => {
   assert.equal(collectedPot(500,[0,0,0]),500);
   assert.throws(()=>collectedPot(15,[10,20]),RangeError);
 });
+
+import {DEFAULT_STARTING_CHIPS, chipInventoryTotal, copyInventory, emptyInventory, inventoryFromAmount, moveChips, validStartingChips} from '../src/chips.ts';
+
+test('custom starting chips keep exact purchasing power',()=>{
+  assert.equal(chipInventoryTotal(DEFAULT_STARTING_CHIPS),1000);
+  assert.ok(validStartingChips(DEFAULT_STARTING_CHIPS));
+  assert.equal(validStartingChips(emptyInventory()),false);
+  assert.equal(chipInventoryTotal({500:2,100:6,25:12,5:16,1:20}),2000);
+});
+
+test('casino makes change without losing value, even from many high-value chips',()=>{
+  const from={500:150,100:0,25:0,5:0,1:0},to=emptyInventory();
+  for(let i=0;i<25;i++){moveChips(from,to,1);assert.equal(chipInventoryTotal(from)+chipInventoryTotal(to),75000);}
+  assert.equal(chipInventoryTotal(to),25);
+  moveChips(from,to,333);
+  assert.equal(chipInventoryTotal(to),358);
+  assert.equal(chipInventoryTotal(from),75000-358);
+  assert.throws(()=>moveChips(from,to,80000),RangeError);
+});
+
+test('chip inventory reconciles for fractional betting and returns',()=>{
+  const a=copyInventory(DEFAULT_STARTING_CHIPS),pot=emptyInventory();
+  for(const value of [10,20,33,41,70,9,117,1,250])moveChips(a,pot,value);
+  assert.equal(chipInventoryTotal(a)+chipInventoryTotal(pot),1000);
+  const outcome=emptyInventory();
+  moveChips(pot,outcome,250);
+  moveChips(pot,outcome,chipInventoryTotal(pot));
+  assert.equal(chipInventoryTotal(pot),0);
+  assert.equal(chipInventoryTotal(a)+chipInventoryTotal(outcome),1000);
+  assert.equal(chipInventoryTotal(inventoryFromAmount(1234)),1234);
+});

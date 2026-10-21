@@ -136,7 +136,7 @@ function TableSetup({defaultSeats,defaultChips,onStart,onExit}:{defaultSeats:num
     <div className="setup-presets">{TABLE_PRESETS.map(p=><button key={p.name} className={CHIP_DENOMINATIONS.every(value=>chips[value]===p.chips[value])?'chosen':''} onClick={()=>setChips(copyInventory(p.chips))}><strong>{p.name}</strong><small>{p.desc}</small></button>)}</div>
     <div className="setup-inventory">
       {CHIP_DENOMINATIONS.map(value=><div className="setup-denom" key={value}>
-        <ChipStack value={value} count={Math.max(1,chips[value])} size="large"/>
+        <ChipStack value={value} count={chips[value]} size="large"/>
         <div className="setup-denom-name"><strong>{value}</strong><small>Номинал</small></div>
         <div className="setup-counter"><button onClick={()=>change(value,-1)} aria-label={`Убрать фишку номинала ${value}`} disabled={chips[value]===0}>−</button><span>{chips[value]}</span><button onClick={()=>change(value,1)} aria-label={`Добавить фишку номинала ${value}`} disabled={chips[value]===200}>+</button></div>
       </div>)}
@@ -150,7 +150,6 @@ function TableSetup({defaultSeats,defaultChips,onStart,onExit}:{defaultSeats:num
 }
 function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Dispatch<SetStateAction<GameState>>;onExit:()=>void;onNewTable:()=>void}){
   const [sheet,setSheet]=useState<'settings'|'history'|null>(null);
-  const [seats,setSeats]=useState(game.opponentCount);
   const [raiseOpen,setRaiseOpen]=useState(false);
   const [raise,setRaise]=useState(40);
   const [speed,setSpeed]=useState<'normal'|'fast'>(()=>load<'normal'|'fast'>('pocket-v4-speed','normal')==='fast'?'fast':'normal');
@@ -219,7 +218,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
   const submit=(kind:'fold'|'call'|'check'|'raise')=>{setGame(s=>act(s,'hero',{kind,to:kind==='raise'?boundedRaise:undefined}));setRaiseOpen(false);};
   const startNew=()=>{setSheet(null);setRaiseOpen(false);onNewTable();};
   return <section className={`game-screen motion-${speed}`}>
-    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>Texas Hold’em</strong><span>{streetName[game.street]} · 10/20 · #{game.handNumber}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>setSheet('history')}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSeats(game.opponentCount);setSheet('settings');}}><Icon name="settings"/></button></div>
+    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>Texas Hold’em</strong><span>{streetName[game.street]} · 10/20 · #{game.handNumber}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>setSheet('history')}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
     <div className={`table-stage seats-${game.opponentCount}`}>
       <div className="table-felt"><div className="table-felt-inner"/><div className="table-grain"/></div>
       {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seatCoords[game.opponentCount][i]} action={notice?.player===id?notice.message:undefined} onInspect={setInspected}/>)}
@@ -259,7 +258,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     </section></div>}
     {sheet&&<div className="sheet-scrim" onClick={()=>setSheet(null)}><section className="bottom-sheet" onKeyDown={e=>{if(e.key==='Escape')setSheet(null);}} role="dialog" aria-modal="true" aria-label={sheet==='settings'?'Настройки стола':'История раздачи'} onClick={e=>e.stopPropagation()}>
       <div className="sheet-head"><h2>{sheet==='settings'?'Настройки стола':'История раздачи'}</h2><button className="icon-button" autoFocus aria-label="Закрыть" onClick={()=>setSheet(null)}><Icon name="close"/></button></div>
-      {sheet==='settings'?<><p className="sheet-hint">Новый матч заменит текущую игру.</p><div className="setting-label">Скорость игры</div><div className="speed-picker" role="group" aria-label="Скорость игры"><button aria-pressed={speed==='normal'} className={speed==='normal'?'active':''} onClick={()=>setSpeed('normal')}>Обычная</button><button aria-pressed={speed==='fast'} className={speed==='fast'?'active':''} onClick={()=>setSpeed('fast')}>Быстрая</button></div><div className="setting-label">Количество соперников</div><div className="seat-picker">{[1,2,3,4,5].map(n=><button key={n} className={seats===n?'active':''} aria-pressed={seats===n} onClick={()=>setSeats(n)}>{n}</button>)}</div><button className="big-primary" onClick={startNew}>Настроить новый стол</button></>:
+      {sheet==='settings'?<><p className="sheet-hint">Новый матч заменит текущую игру.</p><div className="setting-label">Скорость игры</div><div className="speed-picker" role="group" aria-label="Скорость игры"><button aria-pressed={speed==='normal'} className={speed==='normal'?'active':''} onClick={()=>setSpeed('normal')}>Обычная</button><button aria-pressed={speed==='fast'} className={speed==='fast'?'active':''} onClick={()=>setSpeed('fast')}>Быстрая</button></div><p className="sheet-hint">Количество соперников и набор фишек выбираются при создании стола.</p><button className="big-primary" onClick={startNew}>Настроить новый стол</button></>:
       <div className="history-entries">{game.history.length?game.history.map((entry,i)=><p key={i}>{entry}</p>):<p>Событий пока нет</p>}</div>}
     </section></div>}
   </section>;

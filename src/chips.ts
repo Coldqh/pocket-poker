@@ -62,7 +62,7 @@ export function moveChips(from:ChipInventory,to:ChipInventory,amount:number):voi
       from[value]-=count;to[value]+=count;due-=value*count;
     }
     if(!due)break;
-    const idx=CHIP_DENOMINATIONS.findIndex(value=>value>due&&from[value]>0);
+    const idx=CHIP_DENOMINATIONS.findLastIndex(value=>value>due&&from[value]>0);
     if(idx<0||idx===CHIP_DENOMINATIONS.length-1)throw new RangeError('Cannot make change');
     const large=CHIP_DENOMINATIONS[idx],small=CHIP_DENOMINATIONS[idx+1];
     from[large]--;from[small]+=large/small;

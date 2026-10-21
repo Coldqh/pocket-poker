@@ -90,3 +90,22 @@ test('pot fraction presets always respect min and max raise limits',()=>{
  s.players.hero.stack=15;
  assert.equal(potFractionRaiseTo(s,'hero',1),25);
 });
+
+import {chipInventoryTotal, DEFAULT_STARTING_CHIPS} from '../src/chips.ts';
+test('real denominations remain balanced through an entire 3-player hand',()=>{
+ let s=newMatch(2,{500:0,100:6,25:12,5:16,1:20});
+ assert.equal(s.players.hero.stack,1000);
+ for(let i=0;i<200&&!s.result;i++){
+   const id=s.actor;
+   assert.ok(id);
+   s=act(s,id,{kind:amountToCall(s,id)>0?'call':'check'});
+   assert.equal(s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].chips),0)+chipInventoryTotal(s.potChips),3000);
+   for(const p of s.order)assert.equal(chipInventoryTotal(s.players[p].chips),s.players[p].stack);
+   assert.equal(chipInventoryTotal(s.potChips),s.pot);
+ }
+ assert.ok(s.result);
+ assert.equal(s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].chips),0),3000);
+ const next=nextHand(s);
+ assert.equal(next.handNumber,2);
+ assert.equal(chipInventoryTotal(next.startingChips),chipInventoryTotal(DEFAULT_STARTING_CHIPS));
+});
