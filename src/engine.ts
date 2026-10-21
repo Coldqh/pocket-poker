@@ -90,6 +90,7 @@ function collectStreetChips(s:GameState){
     const p=s.players[id];
     const amount=chipInventoryTotal(p.streetChips);
     if(amount>0)moveChips(p.streetChips,s.potChips,amount);
+    p.streetBet=0;
   }
 }
 function pay(s:GameState,id:PlayerId,amount:number,allowExplicitExchange=false) {
