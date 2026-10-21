@@ -150,15 +150,18 @@ function TableSetup({defaultSeats,defaultChips,defaultBlind,defaultDifficulty,de
   const change=(value:typeof CHIP_DENOMINATIONS[number],delta:number)=>setChips(old=>({...old,[value]:Math.min(200,Math.max(0,old[value]+delta))}));
   const matching=TABLE_PRESETS.find(p=>CHIP_DENOMINATIONS.every(v=>chips[v]===p.chips[v]));
   return <section className="table-setup setup-compact">
-    <div className="study-header"><button className="icon-button" onClick={onExit} aria-label="Назад"><Icon name="back"/></button><strong>Новый стол</strong><span className="small-muted">Только фишки</span></div>
+    <div className="study-header"><button className="icon-button" onClick={onExit} aria-label="Назад"><Icon name="back"/></button><strong>Собрать стол</strong><span className="small-muted">01 / PLAY</span></div>
     <div className="setup-main">
+      <div className="setup-editor-caption"><h1>Как играем?</h1><p>Пара настроек — и ты за столом.</p></div>
       <div className="setup-compact-modes" role="group" aria-label="Режим игры">
         <button className={format==='practice'?'active':''} aria-pressed={format==='practice'} onClick={()=>setFormat('practice')}>Свободная игра</button>
         <button className={format==='sitngo'?'active':''} aria-pressed={format==='sitngo'} onClick={()=>setFormat('sitngo')}>Sit & Go</button>
       </div>
       <div className="setup-compact-row"><span>Соперники</span><div className="setup-seats">{[1,2,3,4,5].map(n=><button key={n} aria-label={`${n} соперников`} aria-pressed={seats===n} className={seats===n?'active':''} onClick={()=>setSeats(n)}>{n}</button>)}</div></div>
-      <div className="setup-compact-row"><span>{format==='sitngo'?'Начальные блайнды':'Блайнды'}</span><div className="setup-rule-grid">{[4,10,20,50].map(n=><button key={n} aria-pressed={blind===n} className={blind===n?'active':''} onClick={()=>setBlind(n)}>{n/2}/{n}</button>)}</div></div>
-      <div className="setup-compact-row"><span>Боты</span><div className="setup-rule-grid bot-rule-grid">{([['easy','Легко'],['normal','Обычно'],['hard','Сложно']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div>
+      <details className="setup-advanced"><summary><span><strong>Правила и боты</strong><small>Блайнды {blind/2}/{blind} · {difficulty==='easy'?'Легко':difficulty==='normal'?'Обычно':'Сложно'}</small></span><Icon name="chevron" size={19}/></summary>
+        <div className="setup-advanced-inner"><div className="setup-compact-row"><span>{format==='sitngo'?'Начальные блайнды':'Блайнды'}</span><div className="setup-rule-grid">{[4,10,20,50].map(n=><button key={n} aria-pressed={blind===n} className={blind===n?'active':''} onClick={()=>setBlind(n)}>{n/2}/{n}</button>)}</div></div>
+        <div className="setup-compact-row"><span>Соперники</span><div className="setup-rule-grid bot-rule-grid">{([['easy','Легко'],['normal','Обычно'],['hard','Сложно']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div></div>
+      </details>
       <div className="setup-stack-summary">
         <div><span>Стартовый стек</span><strong>{money(total)}</strong><small>{matching?.name??'Свой набор'} · 1 / 5 / 25 / 100 / 500</small></div>
         <button onClick={()=>setEditChips(true)}>Настроить фишки <Icon name="chevron" size={16}/></button>
