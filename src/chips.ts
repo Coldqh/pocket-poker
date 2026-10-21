@@ -83,6 +83,14 @@ export function makeChangeForAmount(chips:ChipInventory,amount:number):boolean {
     }
     if(index===-1||!exchangeOneChip(chips,CHIP_DENOMINATIONS[index]))return false;
   }
+  if(!canPayChips(chips,amount)){
+    // Fallback for dense mixed stacks: progressively break large chips only
+    // when needed. A chip of 1 always makes an exact integer payment possible.
+    for(let i=0;i<CHIP_DENOMINATIONS.length-1&&!canPayChips(chips,amount);i++){
+      const value=CHIP_DENOMINATIONS[i];
+      while(chips[value]>0&&!canPayChips(chips,amount))exchangeOneChip(chips,value);
+    }
+  }
   return canPayChips(chips,amount);
 }
 
