@@ -275,7 +275,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
           <span className="wager-total">{money(player.streetBet)}</span>
         </div>;
       })}
-      <div className="table-center"><span className="pot-label">{game.result?'РАЗЫГРАНО':'ОБЩИЙ БАНК'}</span><strong className="pot-number" key={`${game.handNumber}-${game.pot}`}>{money(game.pot)}</strong>
+      <div className="table-center"><span className="pot-label">{game.result?'РАЗЫГРАНО':'ОБЩИЙ БАНК'}</span><strong className="pot-number" key={`${game.handNumber}-${game.pot}`}>{money(game.result&&game.lastPot?game.lastPot:game.pot)}</strong>
         {onStreet>0&&<div className="collected-stack"><ChipRack amount={onStreet} groups={inventoryGroups(game.potChips)} size="large"/></div>}
         <div className="community-cards">{Array.from({length:5},(_,i)=><CardFace key={`${game.handNumber}-${i}-${game.board[i]?cardText(game.board[i]):'empty'}`} card={game.board[i]}/>)}</div>
       </div>
@@ -288,7 +288,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
         {notice?.player==='hero'&&<span key={notice.seq} className="seat-action hero-action">{notice.message}</span>}
       </div>
     </div>
-    {game.result&&<div className="end-overlay"><span className="result-emblem">♠</span><strong>{game.result}</strong>{game.format==='sitngo'&&game.matchOver&&<div className="tourney-finish"><b>Место {game.heroPlace} из {game.order.length}</b><span>+{game.tournamentAward} учебных очков</span></div>}<span>{game.matchOver?'Матч завершён. Можно начать новый.':'Раздача завершена, стеки сохранены.'}</span></div>}
+    {game.result&&<div className="end-overlay"><span className="result-emblem">♠</span><strong>{game.result}</strong>{game.lastPot>0&&<span>Банк: {money(game.lastPot)}</span>}{game.format==='sitngo'&&game.matchOver&&<div className="tourney-finish"><b>Место {game.heroPlace} из {game.order.length}</b><span>+{game.tournamentAward} учебных очков</span></div>}<span>{game.matchOver?'Матч завершён. Можно начать новый.':'Раздача завершена, стеки сохранены.'}</span></div>}
     <div className="action-dock">
       {game.result?<button className="big-primary" onClick={()=>game.matchOver?onNewTable():setGame(s=>nextHand(s))}>{game.matchOver?'Новый матч':'Следующая раздача'} <Icon name="chevron" size={18}/></button>:
       <><div className="action-caption"><span>{heroTurn?'Твой ход':game.actor?`${game.players[game.actor]?.name??'Соперник'} думает…`:'Продолжаем раздачу'}</span><strong>{heroTurn?toCall?`К коллу ${money(toCall)}`:'Можно сделать чек':''}</strong></div>
@@ -379,31 +379,38 @@ export default function App(){
   const [page,setPage]=useState<Page>(loadPage);
   const [game,setGame]=useState<GameState>(loadGame);
   const [started,setStarted]=useState<boolean>(loadStarted);
+  const [setupPending,setSetupPending]=useState(false);
+  const [saveError,setSaveError]=useState(false);
   const [profile,setProfile]=useState<Profile>(loadProfile);
   const [progress,setProgress]=useState<Progress>(loadProgress);
   const [session,setSession]=useState<Session>(loadSession);
   const [career,setCareer]=useState<CareerResult[]>(()=>load<CareerResult[]>(CAREER_KEY,[]));
-  useEffect(()=>{try{localStorage.setItem(GAME_KEY,JSON.stringify(game));}catch{}},[game]);
-  useEffect(()=>{try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch{}},[profile]);
-  useEffect(()=>{try{localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));}catch{}},[progress]);
-  useEffect(()=>{try{localStorage.setItem(PAGE_KEY,JSON.stringify(page));}catch{}},[page]);
-  useEffect(()=>{try{localStorage.setItem(SESSION_KEY,JSON.stringify(session));}catch{}},[session]);
-  useEffect(()=>{try{localStorage.setItem(CAREER_KEY,JSON.stringify(career));}catch{}},[career]);
+  const persist=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{setSaveError(true);}};
+  useEffect(()=>{persist(GAME_KEY,game);},[game]);
+  useEffect(()=>{persist(PROFILE_KEY,profile);},[profile]);
+  useEffect(()=>{persist(PROGRESS_KEY,progress);},[progress]);
+  useEffect(()=>{persist(PAGE_KEY,page);},[page]);
+  useEffect(()=>{persist(SESSION_KEY,session);},[session]);
+  useEffect(()=>{persist(CAREER_KEY,career);},[career]);
   useEffect(()=>{
     if(game.format!=='sitngo'||!game.matchOver||game.heroPlace==null)return;
     const id=game.tournamentId;
     setCareer(items=>items.some(x=>x.id===id)?items:[...items,{id,place:game.heroPlace!,players:game.order.length,points:game.tournamentAward,completedAt:Date.now()}].slice(-100));
   },[game.format,game.matchOver,game.heroPlace,game.tournamentId,game.tournamentAward,game.order.length]);
   useEffect(()=>{if('serviceWorker' in navigator&&import.meta.env.PROD)navigator.serviceWorker.register('./sw.js').catch(()=>{});},[]);
-  useEffect(()=>{try{localStorage.setItem(READY_KEY,JSON.stringify(started));}catch{}},[started]);
+  useEffect(()=>{persist(READY_KEY,started);},[started]);
   const navigate=(to:Page)=>{setPage(to);window.scrollTo({top:0,behavior:'instant'});};
-  const startTable=(seats:number,chips:ChipInventory,blind:number,difficulty:BotDifficulty,format:GameFormat)=>{setGame(newMatch(seats,chips,blind,difficulty,format));setStarted(true);};
-  const configureTable=()=>{if(started&&(game.handsFinished>0||game.handNumber>1||game.pot>0)&&!window.confirm('Настроить новый стол? Текущий матч будет заменён.'))return;setStarted(false);};
+  const startTable=(seats:number,chips:ChipInventory,blind:number,difficulty:BotDifficulty,format:GameFormat)=>{
+    if(started&&!window.confirm('Начать новый стол? Текущий матч будет заменён.'))return;
+    setGame(newMatch(seats,chips,blind,difficulty,format));setStarted(true);setSetupPending(false);
+  };
+  const configureTable=()=>{setSetupPending(true);};
     return <div className={`app-shell ${page==='play'?'playing':''}`}>
     {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 1.0 · только условные фишки</small></aside>}
+    {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&<Header page={page} onChange={navigate}/>}
       {page==='home'?<Home game={game} onChange={navigate}/>:
-        page==='play'?(started?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>navigate('home')}/>):
+        page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
         page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession} game={game}/>:
         <Stats game={game} progress={progress} career={career}/>}
     </main>

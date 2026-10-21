@@ -407,3 +407,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .lab-replay-controls button:disabled{opacity:.4}
 .lab-empty{padding:22px 16px;border:1px dashed #65846b;border-radius:12px;color:#cadbcc;font-size:14px;line-height:1.5}
 @media(max-width:370px){.poker-lab{padding-left:8px;padding-right:8px}.lab-card{width:37px;height:53px}.lab-rank-picker{gap:4px}.lab-hands{gap:6px}.lab-builder-felt .lab-card{width:30px;height:43px}}
+
+/* Quality pass: make storage write failures visible */
+.storage-warning{position:fixed;z-index:250;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(calc(100vw - 20px),550px);padding:11px 14px;border-radius:11px;border:1px solid #cf9277;background:#4a241f;color:#fff1e6;box-shadow:0 8px 35px #000a;font-size:12px;line-height:1.4;display:flex;gap:7px;flex-wrap:wrap}
+.storage-warning strong{color:#fff4d6}
