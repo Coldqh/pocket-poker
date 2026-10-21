@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type CSSProperties } from 'react';
 import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, hydrateGameChips, exchangeForBet, exchangePlayerChip, BOT_STYLES, SITNGO_HANDS_PER_LEVEL, type GameFormat, type BotDifficulty, type HandReplay, type Card, type GameState } from './engine';
-import { modules, type Module } from './lessons';
+import { modules } from './lessons';
+import {storyLessons, getStoryLesson} from './story-lessons';
+import {STORY_KEY, hydrateStoryProgress, openStory, visitStoryScene, completeStory, closeStory, completedStoryCount, seenCount, type StoryProgress} from './story-progress';
+import StoryLesson from './StoryLesson';
+import AcademyStories from './AcademyStories';
 import PokerLab from './PokerLab';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
@@ -8,17 +12,14 @@ type Page = 'home' | 'play' | 'academy' | 'stats';
 type Profile = { configured: boolean; experience: 'new' | 'some' | 'confident'; known: string[]; focus: string[] };
 type Progress = { completed: string[]; attempts: Record<string, {correct:number; total:number}> };
 type CareerResult = {id:string;place:number;players:number;points:number;completedAt:number};
-type Session = { moduleId: string | null; phase: 'theory' | 'practice' | 'finished'; index: number; choice: number | null; correct: number; theoryIndex?: number };
 const GAME_KEY = 'pocket-v2-game';
 const PROFILE_KEY = 'pocket-v2-profile';
 const PROGRESS_KEY = 'pocket-v2-progress';
 const PAGE_KEY = 'pocket-v3-page';
-const SESSION_KEY = 'pocket-v3-study';
 const READY_KEY = 'pocket-v6-table-ready';
 const CAREER_KEY = 'pocket-v9-career';
 const emptyProfile:Profile = {configured:false,experience:'new',known:[],focus:[]};
 const emptyProgress:Progress = {completed:[],attempts:{}};
-const emptySession:Session = {moduleId:null,phase:'practice',index:0,choice:null,correct:0,theoryIndex:0};
 const money = (n:number) => n.toLocaleString('ru-RU');
 const playerCountLabel = (n:number) => `${n} ${n===2?'игрока':'игроков'}`;
 type ChipSize = 'mini' | 'small' | 'large' | 'bet';
@@ -54,8 +55,6 @@ function loadProfile():Profile {const p=load(PROFILE_KEY,emptyProfile);return p 
 function loadProgress():Progress {const p=load(PROGRESS_KEY,emptyProgress);return p && Array.isArray(p.completed) && p.attempts?p:emptyProgress;}
 function loadStarted():boolean {return load<boolean>(READY_KEY,false)||!!load<GameState|null>(GAME_KEY,null)?.handsFinished;}
 function loadPage():Page {const p=load<Page>(PAGE_KEY,'home');return ['home','play','academy','stats'].includes(p)?p:'home';}
-function loadSession():Session {const s=load(SESSION_KEY,emptySession);return s && (s.moduleId===null || modules.some(m=>m.id===s.moduleId)) && ['theory','practice','finished'].includes(s.phase)?s:emptySession;}
-
 function Icon({name,size=22}:{name:string;size?:number}) {
   const common={width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true as const};
   switch(name){
@@ -76,17 +75,16 @@ function CardFace({card,hidden=false,small=false}:{card?:Card;hidden?:boolean;sm
     {!hidden&&card?<><span>{cardText(card)}</span><b>{card.suit}</b></>:hidden?<span className="back-pattern">P</span>:null}
   </div>;
 }
-function ScenarioFace({value}:{value:string}){return <div className={`card-face scenario-face ${value.includes('♥')||value.includes('♦')?'red':''}`}><span>{value}</span><b>{value.slice(-1)}</b></div>;}
 function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
-  const tabs:{key:Page;label:string;icon:string}[]=[{key:'home',label:'Клуб',icon:'home'},{key:'academy',label:'Споты',icon:'book'},{key:'stats',label:'Я',icon:'stats'}];
+  const tabs:{key:Page;label:string;icon:string}[]=[{key:'home',label:'Клуб',icon:'home'},{key:'academy',label:'Истории',icon:'book'},{key:'stats',label:'Я',icon:'stats'}];
   return <nav className="tabbar" aria-label="Основные разделы">{tabs.map(tab=><button key={tab.key} aria-current={page===tab.key?'page':undefined} className={page===tab.key?'active':''} onClick={()=>onChange(tab.key)}><Icon name={tab.icon}/><span>{tab.label}</span></button>)}</nav>;
 }
 function Header({onChange}:{onChange:(page:Page)=>void}){
   return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">POKER CLUB <span aria-hidden="true">✦</span></span></header>;
 }
-function Home({game,progress,started,onChange,onPractice}:{game:GameState;progress:Progress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void}){
-  const pick=modules.find(m=>{const attempt=progress.attempts[m.id];return attempt&&attempt.correct<attempt.total;})??modules.find(m=>!progress.completed.includes(m.id))??modules[0];
-  const spot=pick.scenarios[0];
+function Home({game,progress,started,onChange,onPractice}:{game:GameState;progress:StoryProgress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void}){
+  const pick=storyLessons.find(m=>progress.lessons[m.id]&&!progress.lessons[m.id].completedAt)??storyLessons.find(m=>!progress.lessons[m.id]?.completedAt)??storyLessons[0];
+  const spot=pick.scenes.find(scene=>scene.heroCards?.length)??pick.scenes[0];
   const resumable=started&&!game.matchOver;
   return <section className="home-screen lounge-home">
     <header className="lounge-intro"><span className="eyebrow">POCKET / THE CLUB</span><h1>Твой ход<span className="soft-period">.</span></h1><p>Пара минут покера — без лишнего шума.</p></header>
@@ -97,12 +95,12 @@ function Home({game,progress,started,onChange,onPractice}:{game:GameState;progre
         <span className="lounge-play-footer"><span><strong>{resumable?'Вернуться за стол':'Сыграть партию'}</strong><small>{resumable?playerCountLabel(game.opponentCount+1)+' · '+game.smallBlind+'/'+game.bigBlind+' · рука '+game.handNumber:'Настроить фишки и соперников'}</small></span><span className="lounge-arrow"><Icon name="chevron" size={22}/></span></span>
       </button>
       <div className="lounge-secondary">
-        <div className="lounge-section-kicker"><span>02 / LEARN</span><span>{progress.completed.length} из {modules.length} тем</span></div>
+        <div className="lounge-section-kicker"><span>02 / LEARN</span><span>{completedStoryCount(progress)} из {storyLessons.length} историй</span></div>
         <button className="lounge-spot" onClick={()=>onPractice(pick.id)}>
-          <span className="spot-kicker">ОДНА СИТУАЦИЯ</span>
-          <strong>{spot.title}</strong>
-          <span className="spot-preview">{spot.hand?.length?spot.hand.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
-          <span className="spot-link">Попробовать <Icon name="chevron" size={17}/></span>
+          <span className="spot-kicker">КАРТОЧНАЯ ИСТОРИЯ</span>
+          <strong>{pick.title}</strong>
+          <span className="spot-preview">{spot.heroCards?.length?spot.heroCards.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
+          <span className="spot-link">Смотреть историю <Icon name="chevron" size={17}/></span>
         </button>
         <div className="lounge-microstat"><span>Без гонки за сериями.</span><strong>Играй в своём темпе</strong></div>
       </div>
@@ -340,89 +338,22 @@ function Assessment({profile,onSave,onCancel}:{profile:Profile;onSave:(p:Profile
   <><h1>Что интересно?</h1><p className="short-description">Отметь нужное. Всё остальное тоже будет доступно.</p><div className="topic-choices">{modules.map(m=><div className="topic-choice" key={m.id}><strong>{m.title}</strong><div><button className={draft.known.includes(m.id)?'selected':''} onClick={()=>toggle('known',m.id)}>Знаю</button><button className={draft.focus.includes(m.id)?'selected':''} onClick={()=>toggle('focus',m.id)}>Хочу изучить</button></div></div>)}</div></>}
   <div className="assessment-bottom"><button className="big-primary" onClick={()=>step===0?setStep(1):onSave({...draft,configured:true})}>{step===0?'Дальше':'Готово'} <Icon name="chevron" size={18}/></button></div></div>;
 }
-function Study({module,session,setSession,onBack,onFinish}:{module:Module;session:Session;setSession:Dispatch<SetStateAction<Session>>;onBack:()=>void;onFinish:(id:string,correct:number,total:number)=>void}){
-  const scenario=module.scenarios[Math.min(session.index,module.scenarios.length-1)];
-  const [hintVisible,setHintVisible]=useState(false);
-  const [explainMore,setExplainMore]=useState(false);
-  const [theoryVisible,setTheoryVisible]=useState(false);
-  const choose=(index:number)=>{if(session.choice===null)setSession(s=>({...s,choice:index}));};
-  const advance=()=>{
-    if(session.choice===null)return;
-    const correct=session.correct+(session.choice===scenario.correct?1:0);
-    if(session.index>=module.scenarios.length-1){onFinish(module.id,correct,module.scenarios.length);setSession(s=>({...s,correct,phase:'finished'}));}
-    else setSession(s=>({...s,index:s.index+1,choice:null,correct}));
-    setHintVisible(false);setExplainMore(false);setTheoryVisible(false);
-  };
-  const takeaway=scenario.explanation.split(/\.\s+/)[0]+(scenario.explanation.includes('. ')?'.':'');
-  const complete=session.phase==='finished';
-  return <div className="study-screen easy-study">
-    <div className="study-header"><button className="icon-button" aria-label="Вернуться к темам" onClick={onBack}><Icon name="back"/></button><span className="truncate">{module.title}</span><span className="counter">{complete?'Готово':(session.index+1)+' из '+module.scenarios.length}</span></div>
-    <div className="progress-track"><span style={{width:(complete?100:(session.index+1)/module.scenarios.length*100)+'%'}}/></div>
-    {complete?<div className="finish-screen easy-finish"><span className="finish-mark">✓</span><span className="reading-kicker">ТЫ ПРОШЁЛ ЭТИ СИТУАЦИИ</span><h1>{session.correct} из {module.scenarios.length}</h1><p>Ошибки — часть тренировки. Можешь попробовать ещё раз или выбрать другую тему.</p><button className="big-primary" onClick={()=>setSession({...emptySession,moduleId:module.id})}>Ещё раз <Icon name="chevron" size={18}/></button><button className="ghost-button" onClick={onBack}>К спотам</button></div>:
-      <div className="easy-study-main">
-        <div className="easy-spot-lead"><span className="reading-kicker">СИТУАЦИЯ {session.index+1} / {module.scenarios.length}</span><h1>{scenario.title}</h1><p>{scenario.context}</p></div>
-        {(scenario.hand||scenario.board)&&<div className="scenario-table easy-spot-table" role="group" aria-label="Карты в ситуации">
-          <div className="scenario-board">{scenario.board?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div>
-          <div className="scenario-hand">{scenario.hand?.map((card,i)=><ScenarioFace value={card} key={i}/>)}</div>
-        </div>}
-        <h2 className="easy-spot-question">{scenario.question}</h2>
-        <div className="scenario-answers easy-spot-answers">
-          {scenario.choices.map((choice,i)=><button key={i} disabled={session.choice!==null} onClick={()=>choose(i)} className={session.choice===null?'':i===scenario.correct?'correct':session.choice===i?'incorrect':'dimmed'}><span>{choice}</span>{session.choice!==null&&i===scenario.correct?'✓':''}</button>)}
-        </div>
-        {session.choice===null?<div className="easy-study-help"><button className="easy-help-toggle" aria-expanded={hintVisible} onClick={()=>setHintVisible(x=>!x)}><Icon name="book" size={16}/>{hintVisible?'Скрыть подсказку':'Нужна подсказка?'}</button>{hintVisible&&<div className="easy-hint"><strong>{module.theory[0]?.heading}</strong><p>{module.theory[0]?.text}</p></div>}</div>:
-          <div className="easy-feedback" aria-live="polite"><div className="easy-feedback-header"><span>{session.choice===scenario.correct?'✓ Хорошее решение':'Разберём ход'}</span><strong>{session.choice===scenario.correct?'Ты учёл главное':'Вот на что стоит смотреть'}</strong></div><p>{takeaway}</p>{scenario.explanation!==takeaway&&<><button className="easy-feedback-more" aria-expanded={explainMore} onClick={()=>setExplainMore(v=>!v)}>{explainMore?'Скрыть объяснение':'Понять подробнее'} <Icon name="chevron" size={16}/></button>{explainMore&&<p className="easy-feedback-extra">{scenario.explanation}</p>}</>}</div>}
-        {session.choice!==null&&<button className="big-primary easy-next" onClick={advance}>{session.index+1<module.scenarios.length?'Следующая ситуация':'Посмотреть результат'} <Icon name="chevron" size={18}/></button>}
-        <div className="easy-theory-section"><button aria-expanded={theoryVisible} onClick={()=>setTheoryVisible(v=>!v)} className="easy-theory-toggle"><span><span className="eyebrow">ПО ЖЕЛАНИЮ</span><strong>Разобраться в теме</strong></span><Icon name="chevron" size={19}/></button>{theoryVisible&&<div className="easy-theory-list">{module.theory.map((item,i)=><article key={i}><strong>{item.heading}</strong><p>{item.text}</p></article>)}</div>}</div>
-      </div>
-    }
-  </div>;
+function Academy({profile,setProfile,storyProgress,setStoryProgress,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;storyProgress:StoryProgress;setStoryProgress:Dispatch<SetStateAction<StoryProgress>>;game:GameState}){
+ const [editing,setEditing]=useState(false);
+ const [labOpen,setLabOpen]=useState(false);
+ const selected=storyProgress.activeLesson?getStoryLesson(storyProgress.activeLesson):undefined;
+ if(selected)return <section className="academy-screen"><StoryLesson lesson={selected} record={storyProgress.lessons[selected.id]??{scene:0,seen:[]}} onBack={()=>setStoryProgress(p=>closeStory(p))} onVisit={index=>setStoryProgress(p=>visitStoryScene(p,selected.id,index))} onFinish={()=>setStoryProgress(p=>completeStory(p,selected.id,Date.now()))}/></section>;
+ if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
+ if(editing)return <section className="academy-screen"><Assessment profile={profile} onSave={value=>{setProfile(value);setEditing(false);}} onCancel={()=>setEditing(false)}/></section>;
+ return <section className="academy-screen"><AcademyStories progress={storyProgress} onOpen={id=>setStoryProgress(p=>openStory(p,id))} onLab={()=>setLabOpen(true)} onEdit={()=>setEditing(true)}/></section>;
 }
-function Academy({profile,setProfile,progress,setProgress,session,setSession,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;progress:Progress;setProgress:Dispatch<SetStateAction<Progress>>;session:Session;setSession:Dispatch<SetStateAction<Session>>;game:GameState}){
-  const [editing,setEditing]=useState(false);
-  const [labOpen,setLabOpen]=useState(false);
-  const [catalogOpen,setCatalogOpen]=useState(false);
-  const [filter,setFilter]=useState<'all'|'focus'|'done'|'review'>('all');
-  const selected=modules.find(m=>m.id===session.moduleId);
-  const sorted=useMemo(()=>[...modules].sort((a,b)=>{
-    const weight=(m:Module)=>{const attempt=progress.attempts[m.id];return (attempt&&attempt.correct<attempt.total?-3:0)+(profile.focus.includes(m.id)?-2:0)+(profile.known.includes(m.id)?2:0)+(profile.experience==='confident'&&m.level.toLowerCase().includes('продвинут')?-1:0);};
-    return weight(a)-weight(b);
-  }),[profile,progress.attempts]);
-  const visible=sorted.filter(m=>filter==='all'||(filter==='focus'?profile.focus.includes(m.id):filter==='review'?Boolean(progress.attempts[m.id]&&progress.attempts[m.id].correct<progress.attempts[m.id].total):progress.completed.includes(m.id)));
-  if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
-  if(editing)return <section className="academy-screen"><Assessment profile={profile} onSave={p=>{setProfile(p);setEditing(false);}} onCancel={()=>setEditing(false)}/></section>;
-  if(selected)return <section className="academy-screen"><Study module={selected} session={session} setSession={setSession} onBack={()=>setSession(emptySession)} onFinish={(id,correct,total)=>setProgress(p=>({...p,completed:[...new Set([...p.completed,id])],attempts:{...p.attempts,[id]:{correct,total}}}))}/></section>;
-  const recommended=sorted.find(m=>!progress.completed.includes(m.id))??sorted[0];
-  const sample=recommended.scenarios[0];
-  return <section className="academy-screen academy-library atelier-academy">
-    <header className="atelier-heading"><span className="eyebrow">PLAY TO LEARN / 02</span><h1>Не зубри.<br/><em>Решай.</em></h1><p>Одна ситуация. Твой выбор. Короткий разбор.</p></header>
-    <button className="atelier-feature" onClick={()=>setSession({...emptySession,moduleId:recommended.id,phase:'practice'})}>
-      <span className="atelier-feature-top"><span>БЫСТРЫЙ СПОТ</span><span>{progress.completed.length} / {modules.length} тем</span></span>
-      <span className="atelier-feature-center">
-        <span className="atelier-feature-copy"><small>{recommended.tag}</small><strong>{sample.title}</strong><span>Проверить решение</span></span>
-        <span className="atelier-feature-cards" aria-hidden="true">{sample.hand?.length?sample.hand.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
-      </span>
-      <span className="atelier-feature-action">Начать <Icon name="chevron" size={17}/></span>
-    </button>
-    <div className="atelier-tools">
-      <div><span className="eyebrow">ИНСТРУМЕНТЫ</span><h2>Хочешь ещё попробовать?</h2></div>
-      <button className="atelier-tool-link" onClick={()=>setLabOpen(true)}><span className="atelier-tool-icon">♣</span><span><strong>Поиграть с картами</strong><small>Три простых эксперимента. Формулы необязательны.</small></span><Icon name="chevron" size={19}/></button>
-    </div>
-    <div className="atelier-catalog">
-      <button className="atelier-catalog-toggle" aria-expanded={catalogOpen} onClick={()=>setCatalogOpen(x=>!x)}><span><span className="eyebrow">ВСЕ МАТЕРИАЛЫ</span><strong>Коллекция тем <span>{modules.length}</span></strong></span><Icon name="chevron" size={20}/></button>
-      {catalogOpen&&<div className="atelier-catalog-inside">
-        <div className="filter-tabs" role="group" aria-label="Фильтр тем">{([['all','Все'],['focus','Мои'],['review','Ошибки'],['done','Готово']] as const).map(([id,name])=><button key={id} aria-pressed={filter===id} className={filter===id?'active':''} onClick={()=>setFilter(id)}>{name}</button>)}</div>
-        <div className="module-list">{visible.map((m,i)=><button key={m.id} className="module-row" onClick={()=>setSession({...emptySession,moduleId:m.id})}><span className="module-index">{String(i+1).padStart(2,'0')}</span><span className="module-info"><strong>{m.title}</strong><small>{progress.attempts[m.id]?progress.attempts[m.id].correct+'/'+progress.attempts[m.id].total+' · ':''}{m.tag.toLowerCase()}</small></span><span className="module-finish-indicator">{progress.completed.includes(m.id)?'✓':<Icon name="chevron" size={18}/>}</span></button>)}{visible.length===0&&<p className="empty-filter">Пока пусто. Выбери другую подборку.</p>}</div>
-      </div>}
-    </div>
-    <button className="atelier-customize" onClick={()=>setEditing(true)}><Icon name="settings" size={17}/>{profile.configured?'Изменить интересы':'Подстроить под себя'}</button>
-  </section>;
-}
-function Stats({game,progress,career}:{game:GameState;progress:Progress;career:CareerResult[]}){
+function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Progress;storyProgress:StoryProgress;career:CareerResult[]}){
   const points=career.reduce((n,x)=>n+x.points,0);
   const victories=career.filter(x=>x.place===1).length;
   const podiums=career.filter(x=>x.place<=3).length;
   const net=game.players.hero.stack-chipInventoryTotal(game.startingChips);
   const completed=modules.filter(m=>progress.completed.includes(m.id));
+  const watched=storyLessons.filter(m=>Boolean(storyProgress.lessons[m.id]?.completedAt));
   return <section className="stats-screen lounge-profile">
     <header className="profile-heading"><span className="eyebrow">PLAYER CARD / 03</span><h1>Моя игра<span className="soft-period">.</span></h1><p>Все результаты здесь. Без лишних оценок.</p></header>
     <section className="profile-hero">
@@ -432,7 +363,7 @@ function Stats({game,progress,career}:{game:GameState;progress:Progress;career:C
     <section className="profile-glance" aria-label="Статистика">
       <div><strong>{game.handsFinished}</strong><span>Раздач</span></div>
       <div><strong>{game.heroWins}</strong><span>Побед</span></div>
-      <div><strong>{completed.length}<small>/{modules.length}</small></strong><span>Темы</span></div>
+      <div><strong>{watched.length}<small>/{storyLessons.length}</small></strong><span>Уроки</span></div>
     </section>
     <div className="profile-panels">
       <details className="profile-panel"><summary><span><span className="eyebrow">РЕЗУЛЬТАТЫ</span><strong>Карьера Sit & Go</strong></span><span>{career.length} турниров <Icon name="chevron" size={19}/></span></summary>
@@ -440,9 +371,10 @@ function Stats({game,progress,career}:{game:GameState;progress:Progress;career:C
         <div className="career-missions"><h3>Испытания</h3><p className={career.length?'achieved':''}>{career.length?'✓':'○'} Первый турнир</p><p className={podiums?'achieved':''}>{podiums?'✓':'○'} Попасть в топ-3</p><p className={victories?'achieved':''}>{victories?'✓':'○'} Выиграть Sit & Go</p></div>
         {career.length>0&&<div className="career-results"><h3>Последние турниры</h3>{career.slice(-5).reverse().map(x=><div key={x.id}><span>{x.place}-е место из {x.players}</span><b>+{x.points}</b></div>)}</div>}</div>
       </details>
-      <details className="profile-panel"><summary><span><span className="eyebrow">ОБУЧЕНИЕ</span><strong>Пройденные темы</strong></span><span>{completed.length} из {modules.length} <Icon name="chevron" size={19}/></span></summary>
-        <div className="profile-panel-content"><div className="completed-list">{completed.map(m=><div key={m.id}><span>{m.title}</span><strong>{progress.attempts[m.id]?.correct??0}/{progress.attempts[m.id]?.total??m.scenarios.length}</strong></div>)}{completed.length===0&&<p>Пока пусто — результаты тренировок появятся здесь.</p>}</div></div>
+      <details className="profile-panel"><summary><span><span className="eyebrow">ИСТОРИИ</span><strong>Просмотренные уроки</strong></span><span>{watched.length} из {storyLessons.length} <Icon name="chevron" size={19}/></span></summary>
+        <div className="profile-panel-content"><div className="completed-list">{watched.map(m=><div key={m.id}><span>{m.title}</span><strong>✓</strong></div>)}{watched.length===0&&<p>Посмотри первую историю — она появится здесь.</p>}</div></div>
       </details>
+      <details className="profile-panel"><summary><span><span className="eyebrow">АРХИВ</span><strong>Результаты старых упражнений</strong></span><span>{completed.length} тем <Icon name="chevron" size={19}/></span></summary><div className="profile-panel-content"><div className="completed-list">{completed.map(m=><div key={m.id}><span>{m.title}</span><strong>{progress.attempts[m.id]?.correct??0}/{progress.attempts[m.id]?.total??m.scenarios.length}</strong></div>)}{completed.length===0&&<p>Старых результатов пока нет.</p>}</div></div></details>
     </div>
   </section>;
 }
@@ -453,15 +385,14 @@ export default function App(){
   const [setupPending,setSetupPending]=useState(false);
   const [saveError,setSaveError]=useState(false);
   const [profile,setProfile]=useState<Profile>(loadProfile);
-  const [progress,setProgress]=useState<Progress>(loadProgress);
-  const [session,setSession]=useState<Session>(loadSession);
+  const [progress]=useState<Progress>(loadProgress);
+  const [storyProgress,setStoryProgress]=useState<StoryProgress>(()=>hydrateStoryProgress(load<unknown>(STORY_KEY,null)));
   const [career,setCareer]=useState<CareerResult[]>(()=>load<CareerResult[]>(CAREER_KEY,[]));
   const persist=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{setSaveError(true);}};
   useEffect(()=>{persist(GAME_KEY,game);},[game]);
   useEffect(()=>{persist(PROFILE_KEY,profile);},[profile]);
-  useEffect(()=>{persist(PROGRESS_KEY,progress);},[progress]);
+  useEffect(()=>{persist(STORY_KEY,storyProgress);},[storyProgress]);
   useEffect(()=>{persist(PAGE_KEY,page);},[page]);
-  useEffect(()=>{persist(SESSION_KEY,session);},[session]);
   useEffect(()=>{persist(CAREER_KEY,career);},[career]);
   useEffect(()=>{
     if(game.format!=='sitngo'||!game.matchOver||game.heroPlace==null)return;
@@ -477,13 +408,13 @@ export default function App(){
   };
   const configureTable=()=>{setSetupPending(true);};
     return <div className={`app-shell ${page==='play'?'playing':''}`}>
-    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Споты',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET GLOW 2.0 · виртуальные фишки</small></aside>}
+    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Истории',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET STORY 2.3 · виртуальные фишки</small></aside>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&<Header onChange={navigate}/>}
-      {page==='home'?<Home game={game} progress={progress} started={started} onChange={navigate} onPractice={id=>{setSession({...emptySession,moduleId:id,phase:'practice'});navigate('academy');}}/>:
+      {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}}/>:
         page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
-        page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession} game={game}/>:
-        <Stats game={game} progress={progress} career={career}/>}
+        page==='academy'?<Academy profile={profile} setProfile={setProfile} storyProgress={storyProgress} setStoryProgress={setStoryProgress} game={game}/>:
+        <Stats game={game} progress={progress} storyProgress={storyProgress} career={career}/>}
     </main>
     {page!=='play'&&<TabBar page={page} onChange={navigate}/>}
   </div>;
