@@ -400,10 +400,28 @@ function Stats({game,progress,career}:{game:GameState;progress:Progress;career:C
   const victories=career.filter(x=>x.place===1).length;
   const podiums=career.filter(x=>x.place<=3).length;
   const net=game.players.hero.stack-chipInventoryTotal(game.startingChips);
-  return <section className="stats-screen"><span className="small-muted">POCKET / YOU</span><h1>Твой профиль<span className="glow-heading-dot">.</span></h1><div className="stats-highlight"><span>Текущий стек</span><strong>{money(game.players.hero.stack)}</strong><small>{net>=0?'+':''}{money(net)} фишек за этот матч</small></div>
-    <div className="stats-list"><div><span>Сыграно раздач</span><strong>{game.handsFinished}</strong></div><div><span>Выиграно раздач</span><strong>{game.heroWins}</strong></div><div><span>Пройдено тем</span><strong>{progress.completed.length} / {modules.length}</strong></div></div>
-    <section className="career-stats"><h2>Карьера Sit & Go</h2><div className="career-metrics"><div><strong>{career.length}</strong><small>Турниров</small></div><div><strong>{victories}</strong><small>Побед</small></div><div><strong>{points}</strong><small>Очков</small></div></div><div className="career-missions"><h3>Испытания</h3><p className={career.length?'achieved':''}>{career.length?'✓':'○'} Первый турнир</p><p className={podiums?'achieved':''}>{podiums?'✓':'○'} Попасть в топ-3</p><p className={victories?'achieved':''}>{victories?'✓':'○'} Выиграть Sit & Go</p></div>{career.length>0&&<div className="career-results"><h3>Последние результаты</h3>{career.slice(-5).reverse().map(x=><div key={x.id}><span>{x.place}-е место из {x.players}</span><b>+{x.points}</b></div>)}</div>}</section>
-    <h2>Пройденные споты</h2><div className="completed-list">{modules.filter(m=>progress.completed.includes(m.id)).map(m=><div key={m.id}><span>{m.title}</span><strong>{progress.attempts[m.id]?.correct??0}/{progress.attempts[m.id]?.total??m.scenarios.length}</strong></div>)}{progress.completed.length===0&&<p>Здесь будут результаты твоих тренировок.</p>}</div>
+  const completed=modules.filter(m=>progress.completed.includes(m.id));
+  return <section className="stats-screen lounge-profile">
+    <header className="profile-heading"><span className="eyebrow">PLAYER CARD / 03</span><h1>Моя игра<span className="soft-period">.</span></h1><p>Все результаты здесь. Без лишних оценок.</p></header>
+    <section className="profile-hero">
+      <div className="profile-identity"><span className="profile-monogram">P.</span><span><small>ТЕКУЩИЙ СТЕК</small><strong>{money(game.players.hero.stack)}</strong></span></div>
+      <div className="profile-session"><span>Изменение за этот матч</span><strong>{net>=0?'+':''}{money(net)} <small>фишек</small></strong></div>
+    </section>
+    <section className="profile-glance" aria-label="Статистика">
+      <div><strong>{game.handsFinished}</strong><span>Раздач</span></div>
+      <div><strong>{game.heroWins}</strong><span>Побед</span></div>
+      <div><strong>{completed.length}<small>/{modules.length}</small></strong><span>Темы</span></div>
+    </section>
+    <div className="profile-panels">
+      <details className="profile-panel"><summary><span><span className="eyebrow">РЕЗУЛЬТАТЫ</span><strong>Карьера Sit & Go</strong></span><span>{career.length} турниров <Icon name="chevron" size={19}/></span></summary>
+        <div className="profile-panel-content"><div className="career-metrics"><div><strong>{career.length}</strong><small>Турниров</small></div><div><strong>{victories}</strong><small>Побед</small></div><div><strong>{points}</strong><small>Очков</small></div></div>
+        <div className="career-missions"><h3>Испытания</h3><p className={career.length?'achieved':''}>{career.length?'✓':'○'} Первый турнир</p><p className={podiums?'achieved':''}>{podiums?'✓':'○'} Попасть в топ-3</p><p className={victories?'achieved':''}>{victories?'✓':'○'} Выиграть Sit & Go</p></div>
+        {career.length>0&&<div className="career-results"><h3>Последние турниры</h3>{career.slice(-5).reverse().map(x=><div key={x.id}><span>{x.place}-е место из {x.players}</span><b>+{x.points}</b></div>)}</div>}</div>
+      </details>
+      <details className="profile-panel"><summary><span><span className="eyebrow">ОБУЧЕНИЕ</span><strong>Пройденные темы</strong></span><span>{completed.length} из {modules.length} <Icon name="chevron" size={19}/></span></summary>
+        <div className="profile-panel-content"><div className="completed-list">{completed.map(m=><div key={m.id}><span>{m.title}</span><strong>{progress.attempts[m.id]?.correct??0}/{progress.attempts[m.id]?.total??m.scenarios.length}</strong></div>)}{completed.length===0&&<p>Пока пусто — результаты тренировок появятся здесь.</p>}</div></div>
+      </details>
+    </div>
   </section>;
 }
 export default function App(){
