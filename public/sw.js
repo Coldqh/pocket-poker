@@ -1,4 +1,4 @@
-const CACHE = 'pocket-v10-quality3';
+const CACHE = 'pocket-glow-v20';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./','./index.html','./manifest.webmanifest','./icon.svg'])).then(()=>self.skipWaiting()));
 });
