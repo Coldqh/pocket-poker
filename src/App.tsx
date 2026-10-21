@@ -358,6 +358,7 @@ function Study({module,session,setSession,onBack,onFinish}:{module:Module;sessio
 function Academy({profile,setProfile,progress,setProgress,session,setSession,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;progress:Progress;setProgress:Dispatch<SetStateAction<Progress>>;session:Session;setSession:Dispatch<SetStateAction<Session>>;game:GameState}){
   const [editing,setEditing]=useState(false);
   const [labOpen,setLabOpen]=useState(false);
+  const [catalogOpen,setCatalogOpen]=useState(false);
   const [filter,setFilter]=useState<'all'|'focus'|'done'|'review'>('all');
   const selected=modules.find(m=>m.id===session.moduleId);
   const sorted=useMemo(()=>[...modules].sort((a,b)=>{
@@ -366,15 +367,32 @@ function Academy({profile,setProfile,progress,setProgress,session,setSession,gam
   }),[profile,progress.attempts]);
   const visible=sorted.filter(m=>filter==='all'||(filter==='focus'?profile.focus.includes(m.id):filter==='review'?Boolean(progress.attempts[m.id]&&progress.attempts[m.id].correct<progress.attempts[m.id].total):progress.completed.includes(m.id)));
   if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
-  if(editing||!profile.configured)return <section className="academy-screen"><button className="academy-lab-quick" onClick={()=>setLabOpen(true)}>Открыть лабораторию →</button><Assessment profile={profile} onSave={p=>{setProfile(p);setEditing(false);}} onCancel={editing?()=>setEditing(false):undefined}/></section>;
+  if(editing)return <section className="academy-screen"><Assessment profile={profile} onSave={p=>{setProfile(p);setEditing(false);}} onCancel={()=>setEditing(false)}/></section>;
   if(selected)return <section className="academy-screen"><Study module={selected} session={session} setSession={setSession} onBack={()=>setSession(emptySession)} onFinish={(id,correct,total)=>setProgress(p=>({...p,completed:[...new Set([...p.completed,id])],attempts:{...p.attempts,[id]:{correct,total}}}))}/></section>;
   const recommended=sorted.find(m=>!progress.completed.includes(m.id))??sorted[0];
-  return <section className="academy-screen academy-library"><div className="academy-heading"><div><span className="small-muted">POCKET / LEARN</span><h1>Споты<span className="glow-heading-dot">.</span></h1></div><button className="outline-icon" aria-label="Изменить интересы" onClick={()=>setEditing(true)}><Icon name="settings" size={20}/></button></div>
-    <button className="academy-lab-entry" onClick={()=>setLabOpen(true)}><span className="lab-entry-mark">♣</span><span><strong>Покерная лаборатория</strong><small>Шансы · Карты · Твои раздачи</small></span><Icon name="chevron" size={20}/></button>
-    <button className="recommend-row" onClick={()=>setSession({...emptySession,moduleId:recommended.id})}><div><span className="small-muted">СЛЕДУЮЩИЙ СПОТ</span><strong>{recommended.title}</strong><span>{progress.attempts[recommended.id]&&progress.attempts[recommended.id].correct<progress.attempts[recommended.id].total?'Разобрать ошибки':'Теория → игровые решения'}</span></div><Icon name="chevron"/></button>
-    <div className="library-title"><h2>Твоя прокачка</h2><span>{progress.completed.length}/{modules.length} пройдено</span></div>
-    <div className="filter-tabs" role="group" aria-label="Фильтр тем"><button className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>Все</button><button className={filter==='focus'?'active':''} onClick={()=>setFilter('focus')}>Интересуют</button><button className={filter==='review'?'active':''} onClick={()=>setFilter('review')}>Повторить</button><button className={filter==='done'?'active':''} onClick={()=>setFilter('done')}>Пройдено</button></div>
-    <div className="module-list">{visible.map(m=><button key={m.id} className="module-row" onClick={()=>setSession({...emptySession,moduleId:m.id})}><span className={`module-symbol ${progress.completed.includes(m.id)?'done':''}`}>{progress.completed.includes(m.id)?'✓':'♠'}</span><span className="module-info"><strong>{m.title}</strong><small>{progress.attempts[m.id]?`${progress.attempts[m.id].correct}/${progress.attempts[m.id].total} · `:''}{m.tag.toLowerCase()} · практика</small></span><Icon name="chevron" size={18}/></button>)}{visible.length===0&&<p className="empty-filter">Пока здесь пусто. Можно выбрать другие темы в настройках.</p>}</div>
+  const sample=recommended.scenarios[0];
+  return <section className="academy-screen academy-library atelier-academy">
+    <header className="atelier-heading"><span className="eyebrow">PLAY TO LEARN / 02</span><h1>Не зубри.<br/><em>Решай.</em></h1><p>Одна ситуация. Твой выбор. Короткий разбор.</p></header>
+    <button className="atelier-feature" onClick={()=>setSession({...emptySession,moduleId:recommended.id,phase:'practice'})}>
+      <span className="atelier-feature-top"><span>БЫСТРЫЙ СПОТ</span><span>{progress.completed.length} / {modules.length} тем</span></span>
+      <span className="atelier-feature-center">
+        <span className="atelier-feature-copy"><small>{recommended.tag}</small><strong>{sample.title}</strong><span>Проверить решение</span></span>
+        <span className="atelier-feature-cards" aria-hidden="true">{sample.hand?.length?sample.hand.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
+      </span>
+      <span className="atelier-feature-action">В игру <Icon name="chevron" size={17}/></span>
+    </button>
+    <div className="atelier-tools">
+      <div><span className="eyebrow">ИНСТРУМЕНТЫ</span><h2>Разобраться глубже</h2></div>
+      <button className="atelier-tool-link" onClick={()=>setLabOpen(true)}><span className="atelier-tool-icon">♣</span><span><strong>Лаборатория</strong><small>Математика, карты и свои раздачи</small></span><Icon name="chevron" size={19}/></button>
+    </div>
+    <div className="atelier-catalog">
+      <button className="atelier-catalog-toggle" aria-expanded={catalogOpen} onClick={()=>setCatalogOpen(x=>!x)}><span><span className="eyebrow">ВСЕ МАТЕРИАЛЫ</span><strong>Коллекция тем <span>{modules.length}</span></strong></span><Icon name="chevron" size={20}/></button>
+      {catalogOpen&&<div className="atelier-catalog-inside">
+        <div className="filter-tabs" role="group" aria-label="Фильтр тем">{([['all','Все'],['focus','Мои'],['review','Ошибки'],['done','Готово']] as const).map(([id,name])=><button key={id} aria-pressed={filter===id} className={filter===id?'active':''} onClick={()=>setFilter(id)}>{name}</button>)}</div>
+        <div className="module-list">{visible.map((m,i)=><button key={m.id} className="module-row" onClick={()=>setSession({...emptySession,moduleId:m.id})}><span className="module-index">{String(i+1).padStart(2,'0')}</span><span className="module-info"><strong>{m.title}</strong><small>{progress.attempts[m.id]?progress.attempts[m.id].correct+'/'+progress.attempts[m.id].total+' · ':''}{m.tag.toLowerCase()}</small></span><span className="module-finish-indicator">{progress.completed.includes(m.id)?'✓':<Icon name="chevron" size={18}/>}</span></button>)}{visible.length===0&&<p className="empty-filter">Пока пусто. Выбери другую подборку.</p>}</div>
+      </div>}
+    </div>
+    <button className="atelier-customize" onClick={()=>setEditing(true)}><Icon name="settings" size={17}/>{profile.configured?'Изменить интересы':'Подстроить под себя'}</button>
   </section>;
 }
 function Stats({game,progress,career}:{game:GameState;progress:Progress;career:CareerResult[]}){
