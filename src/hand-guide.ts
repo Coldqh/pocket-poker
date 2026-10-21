@@ -17,7 +17,7 @@ export const HAND_RANKINGS=[
 const detail=['Пока только старшая карта','Пара','Две пары','Тройка','Стрит','Флеш','Фулл-хаус','Каре','Стрит-флеш'];
 function bestRelevant(cards:string[],value:ReturnType<typeof evaluateHand>):string[]{
  const kind=value.score[0];
- if(kind===0)return [cards[0]];
+ if(kind===0)return [cards.reduce((top,card)=>{const rank=(v:string)=>({A:14,K:13,Q:12,J:11} as Record<string,number>)[v.slice(0,-1)]??Number(v.slice(0,-1));return rank(card)>rank(top)?card:top;})];
  if(kind>=4&&kind!==7)return cards;
  const ranks=kind===2?[value.score[1],value.score[2]]:[value.score[1]];
  return cards.filter(card=>ranks.includes(({A:14,K:13,Q:12,J:11} as Record<string,number>)[card.slice(0,-1)]??Number(card.slice(0,-1))));
