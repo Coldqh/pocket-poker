@@ -124,34 +124,45 @@ const TABLE_PRESETS:{name:string;desc:string;chips:ChipInventory}[]=[
   {name:'Глубокий',desc:'2 000 фишек',chips:{500:2,100:6,25:12,5:16,1:20}},
   {name:'Крупный стек',desc:'5 000 фишек',chips:{500:7,100:9,25:18,5:26,1:20}}
 ];
+
 function TableSetup({defaultSeats,defaultChips,defaultBlind,defaultDifficulty,defaultFormat,onStart,onExit}:{defaultSeats:number;defaultChips:ChipInventory;defaultBlind:number;defaultDifficulty:BotDifficulty;defaultFormat:GameFormat;onStart:(seats:number,chips:ChipInventory,blind:number,difficulty:BotDifficulty,format:GameFormat)=>void;onExit:()=>void}){
   const [seats,setSeats]=useState(defaultSeats);
   const [format,setFormat]=useState<GameFormat>(defaultFormat);
   const [blind,setBlind]=useState(defaultBlind);
   const [difficulty,setDifficulty]=useState<BotDifficulty>(defaultDifficulty);
   const [chips,setChips]=useState<ChipInventory>(()=>copyInventory(validStartingChips(defaultChips)?defaultChips:DEFAULT_STARTING_CHIPS));
-  const total=chipInventoryTotal(chips);
+  const [editChips,setEditChips]=useState(false);
+  const total=chipInventoryTotal(chips),valid=validStartingChips(chips);
   const change=(value:typeof CHIP_DENOMINATIONS[number],delta:number)=>setChips(old=>({...old,[value]:Math.min(200,Math.max(0,old[value]+delta))}));
-  const valid=validStartingChips(chips);
-  return <section className="table-setup">
-    <div className="study-header"><button className="icon-button" onClick={onExit} aria-label="Назад"><Icon name="back"/></button><strong>Новый стол</strong><span className="small-muted">Без реальных денег</span></div>
-    <div className="setup-intro"><h1>Новый стол</h1><p>Выбери режим, соперников и набор фишек.</p></div>
-    <div className="mode-picks" role="group" aria-label="Режим игры"><button className={format==='practice'?'active':''} onClick={()=>setFormat('practice')} aria-pressed={format==='practice'}><strong>Свободная игра</strong><small>Блайнды не меняются</small></button><button className={format==='sitngo'?'active':''} onClick={()=>setFormat('sitngo')} aria-pressed={format==='sitngo'}><strong>Sit & Go</strong><small>Турнир на выбывание</small></button></div>
-    <div className="setup-presets">{TABLE_PRESETS.map(p=><button key={p.name} className={CHIP_DENOMINATIONS.every(value=>chips[value]===p.chips[value])?'chosen':''} onClick={()=>setChips(copyInventory(p.chips))}><strong>{p.name}</strong><small>{p.desc}</small></button>)}</div>
-    <div className="setup-inventory">
-      {CHIP_DENOMINATIONS.map(value=><div className="setup-denom" key={value}>
+  const matching=TABLE_PRESETS.find(p=>CHIP_DENOMINATIONS.every(v=>chips[v]===p.chips[v]));
+  return <section className="table-setup setup-compact">
+    <div className="study-header"><button className="icon-button" onClick={onExit} aria-label="Назад"><Icon name="back"/></button><strong>Новый стол</strong><span className="small-muted">Только фишки</span></div>
+    <div className="setup-main">
+      <div className="setup-compact-modes" role="group" aria-label="Режим игры">
+        <button className={format==='practice'?'active':''} aria-pressed={format==='practice'} onClick={()=>setFormat('practice')}>Свободная игра</button>
+        <button className={format==='sitngo'?'active':''} aria-pressed={format==='sitngo'} onClick={()=>setFormat('sitngo')}>Sit & Go</button>
+      </div>
+      <div className="setup-compact-row"><span>Соперники</span><div className="setup-seats">{[1,2,3,4,5].map(n=><button key={n} aria-label={`${n} соперников`} aria-pressed={seats===n} className={seats===n?'active':''} onClick={()=>setSeats(n)}>{n}</button>)}</div></div>
+      <div className="setup-compact-row"><span>{format==='sitngo'?'Начальные блайнды':'Блайнды'}</span><div className="setup-rule-grid">{[4,10,20,50].map(n=><button key={n} aria-pressed={blind===n} className={blind===n?'active':''} onClick={()=>setBlind(n)}>{n/2}/{n}</button>)}</div></div>
+      <div className="setup-compact-row"><span>Боты</span><div className="setup-rule-grid bot-rule-grid">{([['easy','Легко'],['normal','Обычно'],['hard','Сложно']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div>
+      <div className="setup-stack-summary">
+        <div><span>Стартовый стек</span><strong>{money(total)}</strong><small>{matching?.name??'Свой набор'} · 1 / 5 / 25 / 100 / 500</small></div>
+        <button onClick={()=>setEditChips(true)}>Настроить фишки <Icon name="chevron" size={16}/></button>
+      </div>
+      {format==='sitngo'&&<p className="setup-mode-hint">Рост блайндов каждые {SITNGO_HANDS_PER_LEVEL} раздачи · выбывание · учебные очки</p>}
+      {!valid&&<p className="setup-error">Стартовый стек: от 200 до 20 000 фишек.</p>}
+    </div>
+    <div className="setup-fixed-footer"><button className="big-primary" disabled={!valid} onClick={()=>onStart(seats,chips,blind,difficulty,format)}>{format==='sitngo'?'Начать турнир':'Играть'} <Icon name="chevron" size={18}/></button></div>
+    {editChips&&<div className="sheet-scrim setup-chip-scrim" onClick={()=>setEditChips(false)}><section className="bottom-sheet setup-chip-sheet" role="dialog" aria-modal="true" aria-label="Настройка количества фишек" onClick={e=>e.stopPropagation()}>
+      <div className="sheet-head"><h2>Фишки</h2><button className="icon-button" autoFocus onClick={()=>setEditChips(false)} aria-label="Закрыть"><Icon name="close"/></button></div>
+      <div className="setup-presets">{TABLE_PRESETS.map(p=><button key={p.name} className={CHIP_DENOMINATIONS.every(value=>chips[value]===p.chips[value])?'chosen':''} onClick={()=>setChips(copyInventory(p.chips))}><strong>{p.name}</strong><small>{p.desc}</small></button>)}</div>
+      <div className="setup-inventory">{CHIP_DENOMINATIONS.map(value=><div className="setup-denom" key={value}>
         <ChipStack value={value} count={chips[value]} size="large"/>
         <div className="setup-denom-name"><strong>{value}</strong><small>Номинал</small></div>
-        <div className="setup-counter"><button onClick={()=>change(value,-1)} aria-label={`Убрать фишку номинала ${value}`} disabled={chips[value]===0}>−</button><span>{chips[value]}</span><button onClick={()=>change(value,1)} aria-label={`Добавить фишку номинала ${value}`} disabled={chips[value]===200}>+</button></div>
-      </div>)}
-    </div>
-    <div className="setup-bottom"><div className="setup-total"><span>Начальный стек</span><strong>{money(total)}</strong><small>Фишек хватит на ставки: за столом доступен размен.</small></div>
-      <div className="setup-rules"><div className="setup-field-title">{format==='sitngo'?'Начальные блайнды':'Блайнды'}</div><div className="setup-rule-grid">{[4,10,20,50].map(n=><button key={n} className={blind===n?'active':''} onClick={()=>setBlind(n)} aria-pressed={blind===n}>{n/2}/{n}</button>)}</div><div className="setup-field-title">Уровень ботов</div><div className="setup-rule-grid bot-rule-grid">{([['easy','Любители'],['normal','Обычные'],['hard','Сильные']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div>
-      {format==='sitngo'&&<p className="tournament-start-note">Блайнды растут каждые {SITNGO_HANDS_PER_LEVEL} раздачи. Выбывшие не возвращаются. За место в турнире начисляются учебные очки.</p>}
-      <div className="setup-players"><strong>Соперники</strong><div className="setup-seats">{[1,2,3,4,5].map(n=><button key={n} aria-pressed={seats===n} className={seats===n?'active':''} onClick={()=>setSeats(n)}>{n}</button>)}</div></div>
-      {!valid&&<p className="setup-error">Для начала нужно собрать от 200 до 20 000 фишек.</p>}
-      <button className="big-primary" disabled={!valid} onClick={()=>onStart(seats,chips,blind,difficulty,format)}>{format==='sitngo'?'Начать турнир':'Сесть за стол'} · {playerCountLabel(seats+1)} <Icon name="chevron" size={18}/></button>
-    </div>
+        <div className="setup-counter"><button disabled={chips[value]===0} onClick={()=>change(value,-1)} aria-label={`Убрать фишку ${value}`}>−</button><span>{chips[value]}</span><button disabled={chips[value]===200} onClick={()=>change(value,1)} aria-label={`Добавить фишку ${value}`}>+</button></div>
+      </div>)}</div>
+      <div className="chip-editor-footer"><span>Всего <strong>{money(total)}</strong></span><button className="big-primary" disabled={!valid} onClick={()=>setEditChips(false)}>Готово</button></div>
+    </section></div>}
   </section>;
 }
 function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Dispatch<SetStateAction<GameState>>;onExit:()=>void;onNewTable:()=>void}){
