@@ -24,7 +24,7 @@ function cardMotion(current:string[]|undefined,previous:string[]|undefined,highl
 }
 export function storyMotion(previous:StoryScene|null,current:StoryScene,fullReplay=false):StoryMotion{
  const first=fullReplay||previous===null;
- const reveal=current.type==='compare',wasRevealed=previous?.type==='compare'??false;
+ const reveal=current.type==='compare',wasRevealed=previous?.type==='compare';
  const highlights=current.highlight??[],oldHighlights=previous?.highlight??[];
  const potChanged=first?current.pot!==undefined:current.pot!==previous.pot;
  const chipsChanged=first?Boolean(current.heroBet||current.villainBet):current.heroBet!==previous.heroBet||current.villainBet!==previous.villainBet;
