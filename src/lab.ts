@@ -1,4 +1,4 @@
-import { cardText, compareValues, deckOfCards, evaluateHand, type Card } from './engine.ts';
+import { cardText, compareValues, deckOfCards, evaluateFive, evaluateHand, type Card } from './engine.ts';
 
 export function potOddsRequired(potBeforeBet:number,bet:number):number {
   if(!Number.isFinite(potBeforeBet)||!Number.isFinite(bet)||potBeforeBet<0||bet<=0)throw new RangeError('Invalid pot or bet');
@@ -42,3 +42,21 @@ export function compareBuiltHands(hero:string[],opponent:string[],board:string[]
   return compareValues(evaluateHand([...hero,...board].map(x=>decodeCard(x)!) ), evaluateHand([...opponent,...board].map(x=>decodeCard(x)!)));
 }
 export const LAB_CARD_OPTIONS=deckOfCards().map(cardText);
+
+/** Returns five cards that form the strongest made hand, with original text labels.
+ * Tie between equally ranked combinations is resolved deterministically by input order. */
+export function bestFiveBuiltHand(hole:string[],board:string[]):string[]|null{
+ const names=[...hole,...board];
+ if(hole.length!==2||board.length<3||board.length>5||new Set(names).size!==names.length)return null;
+ const cards=names.map(decodeCard);
+ if(cards.some(card=>card===null))return null;
+ let best:string[]|null=null;
+ let value:ReturnType<typeof evaluateFive>|null=null;
+ for(let a=0;a<names.length-4;a++)for(let b=a+1;b<names.length-3;b++)
+ for(let c=b+1;c<names.length-2;c++)for(let d=c+1;d<names.length-1;d++)
+ for(let e=d+1;e<names.length;e++){
+  const picks=[a,b,c,d,e],evaluated=evaluateFive(picks.map(i=>cards[i]!));
+  if(!value||compareValues(evaluated,value)>0){value=evaluated;best=picks.map(i=>names[i]);}
+ }
+ return best;
+}
