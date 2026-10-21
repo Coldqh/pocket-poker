@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type CSSProperties } from 'react';
 import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, hydrateGameChips, exchangeForBet, exchangePlayerChip, BOT_STYLES, SITNGO_HANDS_PER_LEVEL, type GameFormat, type BotDifficulty, type HandReplay, type Card, type GameState } from './engine';
 import { modules, type Module } from './lessons';
+import PokerLab from './PokerLab';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
 type Page = 'home' | 'play' | 'academy' | 'stats';
@@ -341,8 +342,9 @@ function Study({module,session,setSession,onBack,onFinish}:{module:Module;sessio
     <div className="finish-screen"><span className="finish-mark">♠</span><h1>{session.correct} из {module.scenarios.length}</h1><p>Практика завершена. К любой теме можно вернуться.</p><button className="big-primary" onClick={onBack}>К темам <Icon name="chevron" size={18}/></button><button className="text-button" onClick={()=>setSession(s=>({...s,phase:'theory',index:0,choice:null,correct:0}))}>Пройти заново</button></div>}
   </div>;
 }
-function Academy({profile,setProfile,progress,setProgress,session,setSession}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;progress:Progress;setProgress:Dispatch<SetStateAction<Progress>>;session:Session;setSession:Dispatch<SetStateAction<Session>>}){
+function Academy({profile,setProfile,progress,setProgress,session,setSession,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;progress:Progress;setProgress:Dispatch<SetStateAction<Progress>>;session:Session;setSession:Dispatch<SetStateAction<Session>>;game:GameState}){
   const [editing,setEditing]=useState(false);
+  const [labOpen,setLabOpen]=useState(false);
   const [filter,setFilter]=useState<'all'|'focus'|'done'|'review'>('all');
   const selected=modules.find(m=>m.id===session.moduleId);
   const sorted=useMemo(()=>[...modules].sort((a,b)=>{
@@ -350,10 +352,12 @@ function Academy({profile,setProfile,progress,setProgress,session,setSession}:{p
     return weight(a)-weight(b);
   }),[profile,progress.attempts]);
   const visible=sorted.filter(m=>filter==='all'||(filter==='focus'?profile.focus.includes(m.id):filter==='review'?Boolean(progress.attempts[m.id]&&progress.attempts[m.id].correct<progress.attempts[m.id].total):progress.completed.includes(m.id)));
-  if(editing||!profile.configured)return <section className="academy-screen"><Assessment profile={profile} onSave={p=>{setProfile(p);setEditing(false);}} onCancel={editing?()=>setEditing(false):undefined}/></section>;
+  if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
+  if(editing||!profile.configured)return <section className="academy-screen"><button className="academy-lab-quick" onClick={()=>setLabOpen(true)}>Открыть лабораторию →</button><Assessment profile={profile} onSave={p=>{setProfile(p);setEditing(false);}} onCancel={editing?()=>setEditing(false):undefined}/></section>;
   if(selected)return <section className="academy-screen"><Study module={selected} session={session} setSession={setSession} onBack={()=>setSession(emptySession)} onFinish={(id,correct,total)=>setProgress(p=>({...p,completed:[...new Set([...p.completed,id])],attempts:{...p.attempts,[id]:{correct,total}}}))}/></section>;
   const recommended=sorted.find(m=>!progress.completed.includes(m.id))??sorted[0];
   return <section className="academy-screen academy-library"><div className="academy-heading"><div><span className="small-muted">Академия</span><h1>Учёба</h1></div><button className="outline-icon" aria-label="Изменить интересы" onClick={()=>setEditing(true)}><Icon name="settings" size={20}/></button></div>
+    <button className="academy-lab-entry" onClick={()=>setLabOpen(true)}><span className="lab-entry-mark">♣</span><span><strong>Покерная лаборатория</strong><small>Шансы банка · Карты · Мои раздачи</small></span><Icon name="chevron" size={20}/></button>
     <button className="recommend-row" onClick={()=>setSession({...emptySession,moduleId:recommended.id})}><div><span className="small-muted">Продолжить</span><strong>{recommended.title}</strong><span>{progress.attempts[recommended.id]&&progress.attempts[recommended.id].correct<progress.attempts[recommended.id].total?'Разобрать ошибки':'Теория → игровые решения'}</span></div><Icon name="chevron"/></button>
     <div className="library-title"><h2>Темы</h2><span>{progress.completed.length}/{modules.length} пройдено</span></div>
     <div className="filter-tabs" role="group" aria-label="Фильтр тем"><button className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>Все</button><button className={filter==='focus'?'active':''} onClick={()=>setFilter('focus')}>Интересуют</button><button className={filter==='review'?'active':''} onClick={()=>setFilter('review')}>Повторить</button><button className={filter==='done'?'active':''} onClick={()=>setFilter('done')}>Пройдено</button></div>
@@ -396,11 +400,11 @@ export default function App(){
   const startTable=(seats:number,chips:ChipInventory,blind:number,difficulty:BotDifficulty,format:GameFormat)=>{setGame(newMatch(seats,chips,blind,difficulty,format));setStarted(true);};
   const configureTable=()=>{if(started&&(game.handsFinished>0||game.handNumber>1||game.pot>0)&&!window.confirm('Настроить новый стол? Текущий матч будет заменён.'))return;setStarted(false);};
     return <div className={`app-shell ${page==='play'?'playing':''}`}>
-    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 0.9 · только условные фишки</small></aside>}
+    {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 1.0 · только условные фишки</small></aside>}
     <main className="app-main">{page!=='play'&&<Header page={page} onChange={navigate}/>}
       {page==='home'?<Home game={game} onChange={navigate}/>:
         page==='play'?(started?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>navigate('home')}/>):
-        page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession}/>:
+        page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession} game={game}/>:
         <Stats game={game} progress={progress} career={career}/>}
     </main>
     {page!=='play'&&<TabBar page={page} onChange={navigate}/>}
