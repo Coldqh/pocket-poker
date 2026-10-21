@@ -96,3 +96,16 @@ export function moveChips(from:ChipInventory,to:ChipInventory,amount:number):voi
   }
   if(due!==0)throw new RangeError('Chip transfer incomplete');
 }
+
+/** Show precisely which denominations an exact wager will place. */
+export function paymentChipGroups(chips:ChipInventory,amount:number):ChipGroup[]|null {
+  if(!canPayChips(chips,amount))return null;
+  let remainder=amount;
+  const picked:ChipGroup[]=[];
+  for(const value of CHIP_DENOMINATIONS){
+    const count=Math.min(chips[value],Math.floor(remainder/value));
+    if(count)picked.push({value,count});
+    remainder-=value*count;
+  }
+  return picked;
+}

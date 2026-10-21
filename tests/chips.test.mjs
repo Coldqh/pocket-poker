@@ -73,3 +73,14 @@ test('manual exchange preserves denominations until user requests a split',()=>{
  assert.equal(canPayChips(manual,25),true);
  assert.equal(chipInventoryTotal(manual),100);
 });
+
+import {paymentChipGroups} from '../src/chips.ts';
+test('wager preview displays the same discs that enter the pot',()=>{
+  const from={500:0,100:0,25:0,5:10,1:0};
+  assert.deepEqual(paymentChipGroups(from,50),[{value:5,count:10}]);
+  const pot=emptyInventory();
+  moveChips(from,pot,50);
+  assert.equal(pot[5],10);
+  assert.equal(pot[25],0);
+  assert.equal(paymentChipGroups(from,1),null);
+});
