@@ -1,0 +1,13 @@
+{
+  "id": "./",
+  "name": "POCKET — покер и обучение",
+  "short_name": "POCKET",
+  "description": "Учись покеру, тренируй решения, играй против бота — без денег и подписок.",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#f7f4ec",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
