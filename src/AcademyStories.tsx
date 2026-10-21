@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {storyLessons} from './story-lessons';
 import {completedStoryCount,seenCount,type StoryProgress} from './story-progress';
 
-export default function AcademyStories({progress,onOpen,onLab,onEdit}:{progress:StoryProgress;onOpen:(id:string)=>void;onLab:()=>void;onEdit:()=>void}){
+export default function AcademyStories({progress,onOpen,onLab,onEdit,onGuide}:{progress:StoryProgress;onOpen:(id:string)=>void;onLab:()=>void;onEdit:()=>void;onGuide:()=>void}){
  const [showAll,setShowAll]=useState(false);
  const inProgress=storyLessons.find(l=>progress.lessons[l.id]&&!progress.lessons[l.id].completedAt);
  const next=inProgress??storyLessons.find(l=>!progress.lessons[l.id]?.completedAt)??storyLessons[0];
@@ -29,6 +29,7 @@ export default function AcademyStories({progress,onOpen,onLab,onEdit}:{progress:
   </div>
   <button className="story-more-chapters" onClick={()=>setShowAll(v=>!v)} aria-expanded={showAll}>{showAll?'Свернуть главы':'Показать все главы'} <span>{showAll?'↑':'↓'}</span></button>
   <div className="story-lab-section"><div><span className="eyebrow">ПОСМОТРИ САМ</span><h2>Лаборатория</h2><p>Без вопросов. Меняй карты, фишки и наблюдай результат.</p></div><button onClick={onLab} className="story-lab-open"><span>♣</span><strong>Открыть эксперименты</strong><span>→</span></button></div>
+  <button className="story-customize" onClick={onGuide}>♠ Памятка комбинаций <span>→</span></button>
   <button className="story-customize" onClick={onEdit}>Настроить интересы <span>⚙</span></button>
  </div>;
 }
