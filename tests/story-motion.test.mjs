@@ -14,13 +14,13 @@ test('deal to blinds keeps existing hero and hidden opponent cards still',()=>{
  assert.equal(motion.chipDirection,'in');
 });
 
-test('blinds 15 to call/check 20 changes only bank and chip movement',()=>{
+test('blinds 15 to call/check 20 updates only the number, never flies chips',()=>{
  const motion=storyMotion(scenes[2],scenes[3]);
  assert.deepEqual(motion.hero,['still','still']);
  assert.deepEqual(motion.villain,['still','still']);
  assert.deepEqual(motion.board,[]);
  assert.equal(motion.potChanged,true);
- assert.equal(motion.chipDirection,'in');
+ assert.equal(motion.chipDirection,null);
  assert.equal(motion.showWinner,false);
 });
 
@@ -54,11 +54,11 @@ test('showdown flips only hidden opponent cards; winner highlight changes only m
  assert.equal(motion.showWinner,true);
 });
 
-test('backwards navigation animates removed bets but leaves identical cards stable',()=>{
+test('backwards navigation never repeats flying chips and keeps cards stable',()=>{
  const reverse=storyMotion(scenes[3],scenes[2]);
  assert.deepEqual(reverse.hero,['still','still']);
  assert.deepEqual(reverse.villain,['still','still']);
- assert.equal(reverse.chipDirection,'out');
+ assert.equal(reverse.chipDirection,null);
  const previousFlop=storyMotion(scenes[5],scenes[4]);
  assert.deepEqual(previousFlop.board,['highlight','still','still']); // returning to flop restores the ace highlight without re-dealing
  assert.deepEqual(previousFlop.hero,['highlight','still']);
@@ -78,4 +78,10 @@ test('unchanged state does not animate, even across narrative-only scenes',()=>{
  assert.deepEqual(motion.board,['still','still','still','still']);
  assert.equal(motion.potChanged,false);
  assert.equal(motion.chipDirection,null);
+});
+
+test('later betting changes never animate new flying chips',()=>{
+ const later={...scenes[3],pot:90,heroBet:50};
+ assert.equal(storyMotion(scenes[3],later).potChanged,true);
+ assert.equal(storyMotion(scenes[3],later).chipDirection,null);
 });
