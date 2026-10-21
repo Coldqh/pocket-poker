@@ -82,7 +82,7 @@ function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
   const tabs:{key:Page;label:string;icon:string}[]=[{key:'home',label:'Клуб',icon:'home'},{key:'academy',label:'Споты',icon:'book'},{key:'stats',label:'Я',icon:'stats'}];
   return <nav className="tabbar" aria-label="Основные разделы">{tabs.map(tab=><button key={tab.key} aria-current={page===tab.key?'page':undefined} className={page===tab.key?'active':''} onClick={()=>onChange(tab.key)}><Icon name={tab.icon}/><span>{tab.label}</span></button>)}</nav>;
 }
-function Header({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
+function Header({onChange}:{onChange:(page:Page)=>void}){
   return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">POKER CLUB <span aria-hidden="true">✦</span></span></header>;
 }
 function Home({game,onChange}:{game:GameState;onChange:(page:Page)=>void}){
@@ -408,7 +408,7 @@ export default function App(){
     return <div className={`app-shell ${page==='play'?'playing':''}`}>
     {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Споты',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET GLOW 2.0 · виртуальные фишки</small></aside>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
-    <main className="app-main">{page!=='play'&&<Header page={page} onChange={navigate}/>}
+    <main className="app-main">{page!=='play'&&<Header onChange={navigate}/>}
       {page==='home'?<Home game={game} onChange={navigate}/>:
         page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
         page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession} game={game}/>:
