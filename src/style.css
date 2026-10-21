@@ -12,3 +12,80 @@
 @media(max-width:375px){.resume-art{transform:scale(.65) rotate(-9deg)}.resume-content{max-width:77%}.resume-content h2{font-size:24px}.table-felt{left:3%;right:3%}.table-opponent{width:67px}.table-hero{min-width:166px;padding:8px 11px;gap:8px}.table-hero .hero-name strong{font-size:15px}.community-cards{gap:3px}.community-cards .card-face{width:34px;height:48px}.table-center{top:56%}.table-actions{gap:6px}.table-actions button{font-size:12px}.scenario-table{height:152px}.scenario-face{width:35px;height:49px}}
 @media(max-height:690px){.game-toolbar{flex-basis:47px}.game-title span{font-size:10px}.table-felt{top:18%;bottom:10%}.table-hero{bottom:2%;padding:6px 10px}.table-hero .card-face{width:32px;height:44px}.table-center{top:56%}.pot-number{font-size:18px}.card-face:not(.scenario-face):not(.card-small){width:34px;height:48px}.action-dock{padding-top:7px}.action-caption{margin-bottom:5px}.table-actions button{min-height:46px}.opponent-avatar{width:24px;height:24px}.table-opponent{gap:0}.opponent-cards .card-face{width:20px;height:27px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* POCKET 0.4 — purposeful motion & mobile touch feedback */
+:root{--motion-quick:125ms;--motion-mid:240ms;--motion-slow:420ms}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color var(--motion-quick) ease,border-color var(--motion-quick) ease,opacity var(--motion-quick) ease,filter var(--motion-quick) ease,transform var(--motion-quick) ease}
+button:not(:disabled):active{transform:scale(.975)}
+button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offset:3px}
+.home-screen,.academy-screen,.stats-screen{animation:screen-in var(--motion-mid) ease both}
+.resume-tile,.recommend-row,.learning-row{transition:transform var(--motion-mid) cubic-bezier(.2,.8,.2,1),border-color var(--motion-mid) ease,box-shadow var(--motion-mid) ease}
+.resume-tile:active,.recommend-row:active,.learning-row:active{transform:scale(.985)}
+.tabbar button.active svg,.desktop-tabs button.active svg{animation:nav-pop var(--motion-mid) cubic-bezier(.2,1.4,.4,1)}
+.module-row,.assessment-options button,.topic-choice button{transition:background var(--motion-quick) ease,transform var(--motion-quick) ease,border-color var(--motion-quick) ease}
+.scenario-answers button.correct{animation:correct-pop var(--motion-mid) ease both}
+.scenario-answers button.incorrect{animation:incorrect-nudge var(--motion-mid) ease}
+.scenario-explanation,.finish-screen{animation:screen-in var(--motion-mid) ease both}
+.progress-track>span{transition:width var(--motion-slow) cubic-bezier(.22,1,.36,1)}
+/* Cards are introduced when a new hand or a new community card enters the DOM. */
+.card-face.card-empty{background:#d7ead914;border:1px dashed #b5d5ba39;box-shadow:none;color:transparent}
+.hero-cards .card-face,.opponent-cards .card-face{animation:deal-card .38s cubic-bezier(.13,.8,.23,1.15) both}
+.hero-cards .card-face:nth-child(2),.opponent-cards .card-face:nth-child(2){animation-delay:90ms}
+.community-cards .card-face:not(.card-empty){backface-visibility:hidden;animation:reveal-card .42s cubic-bezier(.2,.8,.2,1) both}
+.community-cards .card-face:nth-child(2){animation-delay:65ms}
+.community-cards .card-face:nth-child(3){animation-delay:130ms}
+.hero-cards .card-face{box-shadow:0 4px 12px #081c1680}
+.table-hero.acting{animation:turn-glow 2.1s ease-in-out infinite}
+.table-opponent.acting .opponent-avatar{animation:opponent-glow 2s ease-in-out infinite;border-color:#edcc93}
+.table-opponent.folded .opponent-cards{filter:grayscale(.65);opacity:.45}
+.table-opponent.folded .opponent-avatar{opacity:.55}
+.pot-number{font-variant-numeric:tabular-nums;animation:pot-pop .29s cubic-bezier(.22,1.45,.5,1) both}
+.table-stage .chip-flight{position:absolute;z-index:6;left:var(--flight-from-x);top:var(--flight-from-y);width:26px;height:19px;pointer-events:none;animation:chips-to-pot .55s cubic-bezier(.18,.75,.3,1) forwards;filter:drop-shadow(0 3px 5px #081a1499)}
+.chip-flight i{position:absolute;display:block;width:22px;height:10px;border-radius:50%;border:3px dashed #f1e5ca;background:#be8e50;box-shadow:0 2px 0 #895c34}
+.chip-flight i:nth-child(2){top:5px;left:4px;background:#8ebca4;border-color:#f1e5ca}
+.chip-flight i:nth-child(3){top:10px;left:-2px;background:#d49a5f}
+.table-stage .chip-flight.chip-win{--flight-from-x:50%;--flight-from-y:50%;animation:chips-to-winner .67s cubic-bezier(.15,.6,.2,1) forwards}
+.table-event{position:absolute;z-index:6;top:71%;left:50%;transform:translateX(-50%);padding:6px 12px;background:#12221dcc;border:1px solid #6f8b7155;border-radius:100px;font-size:11px;font-weight:700;color:#f6e8c8;pointer-events:none;white-space:nowrap;opacity:0}
+.table-event:not(:empty){animation:action-flash 1.04s ease forwards}
+.seat-action{position:absolute;z-index:7;min-width:35px;white-space:nowrap;background:#e5cf9f;color:#1c2b21;border-radius:6px;padding:4px 7px;font-size:10px;font-weight:800;box-shadow:0 4px 10px #09191070;pointer-events:none;animation:seat-action-in .75s ease both}
+.opponent-action{top:21px;left:calc(50% + 19px)}
+.hero-action{top:-23px;left:50%;transform:translateX(-50%)}
+.end-overlay{animation:result-in .36s cubic-bezier(.15,.85,.3,1) both;max-width:min(84%,320px);gap:8px}
+.end-overlay strong{font-size:20px}
+.end-overlay span:last-child{font-size:12px;line-height:1.4}
+.result-emblem{font:30px Georgia,serif;color:#e4c28a;animation:result-symbol-in .55s cubic-bezier(.15,1.2,.3,1) both}
+.raise-panel{animation:raise-open var(--motion-mid) cubic-bezier(.2,.8,.2,1) both;transform-origin:bottom}
+.raise-input-label{display:inline-flex;align-items:center;gap:5px;color:#a9bbaa;font-size:11px}
+.raise-input-label input{box-sizing:border-box;min-width:75px;max-width:115px;width:95px;color:#f3dba9;background:#17231c;border:1px solid #587258;border-radius:8px;padding:7px 8px;font-size:16px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.raise-input-label input::-webkit-inner-spin-button,.raise-input-label input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.raise-presets button:active{background:#e5c58d;color:#1a2b21}
+.sheet-scrim{animation:scrim-enter .23s ease both}
+.bottom-sheet{animation:sheet-enter .31s cubic-bezier(.22,.8,.2,1) both}
+.speed-picker{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:11px 0 24px}
+.speed-picker button{min-height:46px;background:#2b3d30;border:1px solid #4d654e;color:#e1e9de;border-radius:10px;font-size:13px}
+.speed-picker button.active{background:#e6c88e;border-color:#e6c88e;color:#192d20;font-weight:800}
+.motion-fast .hero-cards .card-face,.motion-fast .opponent-cards .card-face,.motion-fast .community-cards .card-face{animation-duration:.17s;animation-delay:0ms}
+.motion-fast .chip-flight,.motion-fast .chip-flight.chip-win{animation-duration:.24s}
+.motion-fast .table-event:not(:empty){animation-duration:.48s}
+.motion-fast .seat-action{animation-duration:.48s}
+.motion-fast .end-overlay,.motion-fast .result-emblem{animation-duration:.2s}
+@keyframes screen-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes nav-pop{0%{transform:scale(.8)}65%{transform:scale(1.14)}100%{transform:scale(1)}}
+@keyframes deal-card{0%{opacity:0;transform:translate(25px,-34px) rotate(16deg) scale(.73)}75%{opacity:1;transform:translate(-2px,2px) rotate(-3deg) scale(1.03)}100%{opacity:1;transform:none}}
+@keyframes reveal-card{0%{opacity:.35;transform:perspective(320px) rotateY(85deg) translateY(-9px)}50%{opacity:1}100%{opacity:1;transform:perspective(320px) rotateY(0deg)}}
+@keyframes turn-glow{0%,100%{box-shadow:0 0 0 2px #ddc08a22,0 8px 15px #09201590}50%{box-shadow:0 0 0 5px #ddc08a36,0 8px 20px #09201590}}
+@keyframes opponent-glow{0%,100%{box-shadow:0 0 0 0 #e5c48615}50%{box-shadow:0 0 0 5px #e5c48630}}
+@keyframes pot-pop{from{opacity:.55;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes chips-to-pot{0%{left:var(--flight-from-x);top:var(--flight-from-y);opacity:0;transform:translate(-50%,-50%) scale(.8)}15%{opacity:1}80%{opacity:1}100%{left:50%;top:47%;opacity:0;transform:translate(-50%,-50%) scale(.7)}}
+@keyframes chips-to-winner{0%{left:50%;top:50%;opacity:0;transform:translate(-50%,-50%) scale(.9)}15%{opacity:1}75%{opacity:1}100%{left:50%;top:85%;opacity:0;transform:translate(-50%,-50%) scale(.7)}}
+@keyframes action-flash{0%{opacity:0;transform:translate(-50%,8px)}18%,70%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}
+@keyframes seat-action-in{0%{opacity:0;scale:.85}25%,70%{opacity:1;scale:1}100%{opacity:0;scale:.97}}
+@keyframes result-in{from{opacity:0;transform:translate(-50%,-45%) scale(.88)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes result-symbol-in{0%{opacity:0;transform:scale(.4) rotate(-25deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes raise-open{from{opacity:0;transform:translateY(12px) scaleY(.95)}to{opacity:1;transform:translateY(0) scaleY(1)}}
+@keyframes sheet-enter{from{opacity:.7;transform:translateY(70px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scrim-enter{from{opacity:0}to{opacity:1}}
+@keyframes correct-pop{0%{transform:scale(.98)}60%{transform:scale(1.015)}100%{transform:scale(1)}}
+@keyframes incorrect-nudge{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
+@media(hover:hover){.action-call:hover,.big-primary:hover,.action-raise:hover{filter:brightness(1.065)}.module-row:hover,.learning-row:hover{background:#25392a}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.table-event:not(:empty){opacity:1!important}}

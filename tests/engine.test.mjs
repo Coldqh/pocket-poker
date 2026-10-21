@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newMatch,nextHand,act,amountToCall,botMove,maxRaiseTo,minRaiseTo,cardText,evaluateHand,compareValues,deckOfCards} from '../src/engine.ts';
+import {newMatch,nextHand,act,amountToCall,botMove,maxRaiseTo,minRaiseTo,potFractionRaiseTo,cardText,evaluateHand,compareValues,deckOfCards} from '../src/engine.ts';
 const c=(rank,suit)=>({rank,suit});
 test('52 unique cards',()=>assert.equal(new Set(deckOfCards().map(cardText)).size,52));
 test('ace-low wheel straight',()=>assert.deepEqual(evaluateHand([c(14,'♠'),c(2,'♦'),c(3,'♣'),c(4,'♥'),c(5,'♠')]).score,[4,5]));
@@ -70,4 +70,23 @@ test('short stack all-in does not reopen a previously closed raise',()=>{
  s=act(s,'hero',{kind:'call'});
  assert.equal(s.actor,'bot-1');
  assert.equal(maxRaiseTo(s,'bot-1'),s.currentBet);
+});
+
+test('pot-sized raise includes outstanding call; 10/20 blinds from small blind',()=>{
+ const s=newMatch(1);assert.equal(s.actor,'hero');
+ assert.equal(s.pot,30);assert.equal(amountToCall(s,'hero'),10);
+ assert.equal(potFractionRaiseTo(s,'hero',1),60);
+ assert.equal(potFractionRaiseTo(s,'hero',.5),40);
+ const raised=act(s,'hero',{kind:'raise',to:potFractionRaiseTo(s,'hero',1)});
+ assert.notEqual(raised,s);assert.equal(raised.currentBet,60);
+});
+test('pot fraction presets always respect min and max raise limits',()=>{
+ let s=newMatch(1);
+ for(const fraction of [.33,.5,1,1.5,4]) {
+  const value=potFractionRaiseTo(s,'hero',fraction);
+  assert.ok(value>=Math.min(minRaiseTo(s),maxRaiseTo(s,'hero')));
+  assert.ok(value<=maxRaiseTo(s,'hero'));
+ }
+ s.players.hero.stack=15;
+ assert.equal(potFractionRaiseTo(s,'hero',1),25);
 });

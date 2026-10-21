@@ -131,6 +131,19 @@ export function maxRaiseTo(s:GameState,id:PlayerId):number {
   return p.streetBet+p.stack;
 }
 export function minRaiseTo(s:GameState):number {return s.currentBet+s.minRaise;}
+/** Total bet size for a fraction of the pot, including a call before raising.
+ * pot-size raise TO = currentBet + pot + amountToCall.
+ * Returned amount is legal under our no-limit rules, including short all-ins.
+ */
+export function potFractionRaiseTo(s:GameState,id:PlayerId,fraction:number):number {
+  const maximum=maxRaiseTo(s,id);
+  if(maximum<=s.currentBet)return s.currentBet;
+  const min=Math.min(minRaiseTo(s),maximum);
+  const afterCall=s.pot+amountToCall(s,id);
+  const desired=s.currentBet+Math.floor(Math.max(0,fraction)*afterCall);
+  return Math.min(maximum,Math.max(min,desired));
+}
+
 function awardUncontested(s:GameState,winner:PlayerId) {
   const total=s.pot;s.players[winner].stack+=total;s.pot=0;
   s.result=winner==='hero'?`Все сбросили карты — банк ${total} твой.`:`${s.players[winner].name} забирает банк ${total}.`;
@@ -146,8 +159,9 @@ function showdown(s:GameState) {
   const contestants=inHand(s);
   const values=Object.fromEntries(contestants.map(id=>[id,evaluateHand([...s.players[id].hand,...s.board])]));
   const limits=[...new Set(currentInHand(s).map(id=>s.players[id].contributed).filter(Boolean))].sort((a,b)=>a-b);
-  let previous=0,heroWon=false,heroTied=false;
+  let previous=0,heroWon=false,heroTied=false,heroPayout=0;
   const orderFromButton=[...s.order.slice(s.buttonIndex+1),...s.order.slice(0,s.buttonIndex+1)];
+  const heroBefore=s.players.hero.stack;
   for(const limit of limits) {
     const contributors=currentInHand(s).filter(id=>s.players[id].contributed>=limit);
     const value=(limit-previous)*contributors.length;previous=limit;
@@ -162,9 +176,10 @@ function showdown(s:GameState) {
     for(const id of orderFromButton)if(remainder>0&&winners.includes(id)){s.players[id].stack++;remainder--;}
     if(winners.includes('hero')) {heroWon=true;if(winners.length>1)heroTied=true;}
   }
+  heroPayout=s.players.hero.stack-heroBefore;
   s.pot=0;s.revealBot=true;
   const heroValue=values.hero?.name.toLowerCase()??'фолд';
-  s.result=heroWon?(heroTied?`Банк разделён. Твоя комбинация — ${heroValue}.`:`Ты забираешь банк! ${heroValue}.`):`Вскрытие: ${heroValue}. Банк ушёл соперникам.`;
+  s.result=heroWon?(heroTied?`Твоя доля: ${heroPayout} фишек · ${heroValue}.`:`Ты выиграл ${heroPayout} фишек · ${heroValue}.`):`Вскрытие: ${heroValue}. Банк ушёл соперникам.`;
   log(s,`Вскрытие · ${contestants.map(id=>`${s.players[id].name}: ${values[id].name.toLowerCase()}`).join(' · ')}`);
   finishHand(s,heroWon,heroTied);
 }
