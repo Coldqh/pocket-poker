@@ -1,0 +1,39 @@
+/* In-game teaching tools: restrained After Hours colors, no takeover of the table. */
+.game-guide-button>span{display:grid;place-items:center;width:23px;height:23px;border:1.5px solid currentColor;border-radius:50%;font-size:13px;font-weight:850}
+.game-assist-controls{display:flex;align-items:center;gap:7px;min-width:0;justify-content:space-between;min-height:27px;margin-bottom:7px}
+.game-assist-toggle{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex:none;min-height:29px;padding:4px 9px;border-radius:10px;border:1px solid #566B73;background:#293641;color:#BECCD0;font-size:11px;font-weight:800}
+.game-assist-toggle.active{border-color:#849D91;background:#3B5449;color:#EFF7EF}
+.game-assist-toggle>span{font-size:15px;color:#BBD1C1}
+.game-hand-bubble{display:flex;align-items:center;gap:7px;justify-content:flex-end;min-width:0;max-width:70%;padding:5px 9px;background:#2A393E;border:1px solid #5E7773;border-radius:10px;color:#D7E8DE;font-size:11px;line-height:1.3;box-shadow:0 1px 7px #0002}
+.game-hand-bubble strong{font-weight:850;color:#F1F6ED;white-space:nowrap}
+.game-hand-bubble>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#C0D1CC}
+.table-stage .card-face.guide-best-card{position:relative;z-index:1;outline:2px solid #E6E7AB;outline-offset:2px;box-shadow:0 0 0 4px #DCE4A41D,0 0 17px #E6EFBB86;transition:outline-color .18s ease,box-shadow .18s ease}
+.table-hero .card-face.guide-best-card{z-index:4}
+/* Compact cheat sheet: strongest combination first, with recognizable examples. */
+.hand-guide-scrim{z-index:120}
+.hand-guide-sheet{max-height:89dvh;overflow-y:auto;overscroll-behavior:contain;padding:17px 17px calc(23px + env(safe-area-inset-bottom));border-radius:23px 23px 0 0}
+.hand-guide-sheet .sheet-head{position:sticky;top:-17px;z-index:2;margin:-17px -17px 13px;padding:16px 17px 11px;background:#212A34;border-bottom:1px solid #4B5965}
+.hand-guide-sheet .sheet-head>div{display:grid;gap:5px}
+.guide-kicker{color:#BCD0C9;font-size:10px;font-weight:800;letter-spacing:.1em}
+.hand-guide-sheet h2{font-family:'Space Grotesk','Manrope',sans-serif;font-size:23px}
+.guide-intro{font-size:12px;line-height:1.6;color:#C4D0D2;margin-bottom:12px}
+.guide-ranking-list{display:grid;gap:7px}
+.guide-ranking{display:flex;align-items:flex-start;gap:12px;padding:12px 10px;background:#2B3740;border:1px solid #4C5E67;border-radius:12px}
+.guide-rank{display:grid;place-items:center;width:30px;height:32px;border-radius:8px;background:#415751;color:#D7E9DE;font:800 13px 'Space Grotesk','Manrope',sans-serif;flex:none}
+.guide-ranking-text{min-width:0;display:grid;gap:5px}
+.guide-ranking-text strong{font-size:14px;color:#F3F5F0}
+.guide-ranking-text small{color:#C0CBD0;font-size:11px}
+.guide-mini-row{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+.guide-mini-card{display:grid;place-items:center;min-width:29px;height:35px;border:1px solid #FFF8;border-radius:5px;background:#F8F6EC;color:#27323B;font:700 11px Georgia,serif}
+.guide-mini-card.red{color:#B8525D}
+.guide-end{margin:14px 0 0}
+@media(min-width:700px){.hand-guide-sheet{width:min(460px,90vw);margin:0 auto;border-radius:20px}.hand-guide-scrim{align-items:center;justify-content:center}}
+@media(max-width:380px){
+ .game-toolbar .game-guide-button{width:35px;flex-basis:35px}
+ .game-assist-toggle{padding:4px 6px;font-size:10px}
+ .game-hand-bubble{font-size:10px;padding:5px 7px}
+ .game-hand-bubble>span{max-width:105px}
+ .guide-ranking{padding:9px 8px}
+ .guide-mini-card{height:31px;min-width:26px;font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){.table-stage .card-face.guide-best-card{transition:none}}
