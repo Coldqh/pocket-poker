@@ -95,3 +95,8 @@ Blinds (2/4, 5/10, 10/20, 25/50), 3 selectable bot difficulty levels, five consi
 ## POCKET GLOW 2.0 — интерфейс
 
 Новый визуальный язык: графитовые поверхности, лаймовый основной акцент, сиреневый для рейза и обучения, контрастная типографика Manrope / Unbounded. Одна крупная карточка входа в игру, мобильная навигация «Клуб / Споты / Я», оформленный игровой стол и более короткие экранные тексты академии. Условия учебных раздач доступны по раскрытию, а объяснения и сами условия сохранены без сокращения математической сути. Отдельный слой `src/glow.css` подключается после исходных стилей, чтобы редизайн можно было постепенно стабилизировать без размножения старых правил. Сохранения продолжают использовать прежние ключи; это визуальный, а не экономический релиз. Поддерживается `prefers-reduced-motion`.
+
+
+## POCKET 2.1 — After Hours, structural redesign
+
+Instead of the neon Glow recolor, POCKET now uses a soft graphite/sage/slate editorial palette. Navigation and screen composition were rebuilt: the lounge opens an actual saved game or launches a quick playable scenario; the academy starts with an interactive spot and hides its full catalog in an expandable section; the player profile is a concise card with expandable records. The table setup keeps blind/difficulty settings in an advanced disclosure, and the game has a street-progress ribbon. Existing games, chip accounting, tests and persisted profile keys remain intact. No fabricated streaks, artificial XP or manipulative prompts.
