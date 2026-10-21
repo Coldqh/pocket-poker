@@ -2,6 +2,15 @@ import { DEFAULT_STARTING_CHIPS, canPayChips, chipInventoryTotal, copyInventory,
 export type Suit = '♠' | '♥' | '♦' | '♣';
 export type PlayerId = string;
 export type BotDifficulty = 'easy'|'normal'|'hard';
+export type GameFormat = 'practice'|'sitngo';
+export const SITNGO_HANDS_PER_LEVEL=4;
+const BLIND_MULTIPLIERS=[1,2,3,4,6,8,12,16,24,32,48,64,96,128];
+export function tournamentBlind(start:number,hand:number):number {
+  const level=Math.max(0,Math.floor((Math.max(1,hand)-1)/SITNGO_HANDS_PER_LEVEL));
+  const multiplier=BLIND_MULTIPLIERS[Math.min(level,BLIND_MULTIPLIERS.length-1)];
+  return Math.min(1000000,start*multiplier);
+}
+export function tournamentPoints(place:number):number{return place===1?100:place===2?45:place===3?20:0;}
 export type ReplayPlayer = {id:string;name:string;stack:number;streetBet:number;folded:boolean;cards:string[]};
 export type ReplayFrame = {label:string;street:Street;board:string[];pot:number;players:ReplayPlayer[]};
 export type HandReplay = {number:number;result:string;frames:ReplayFrame[]};
@@ -25,6 +34,7 @@ export type GameState = {
   opponentCount: number; pot: number; currentBet: number; minRaise: number;
   startingChips: ChipInventory; potChips: ChipInventory;
   smallBlind:number;bigBlind:number;botDifficulty:BotDifficulty;
+  format:GameFormat;initialBlind:number;eliminated:PlayerId[];heroPlace:number|null;tournamentId:string;tournamentAward:number;
   replayFrames:ReplayFrame[];replayArchive:HandReplay[];
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
@@ -93,7 +103,7 @@ function nextAround(s: GameState, index: number, pred: (id: PlayerId)=>boolean):
 }
 function clone(s: GameState): GameState {
   return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order], potChips:copyInventory(s.potChips),startingChips:copyInventory(s.startingChips),
-    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
+    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],eliminated:[...s.eliminated],replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
 }
 function log(s:GameState, text:string) { s.history = [text, ...s.history].slice(0,40); }
 function snapshot(s:GameState,label:string){
@@ -138,9 +148,9 @@ export function exchangeForBet(original:GameState,id:PlayerId,amount:number):Gam
   return s;
 }
 function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].hand.length===2);}
-function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory,bigBlind:number,botDifficulty:BotDifficulty,archive:HandReplay[]):GameState {
+function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory,bigBlind:number,botDifficulty:BotDifficulty,archive:HandReplay[],format:GameFormat='practice',initialBlind=bigBlind,eliminated:PlayerId[]=[],tournamentId=''):GameState {
   const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],chips:copyInventory(players[id].chips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
-    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
+    order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,format,initialBlind,eliminated:[...eliminated],heroPlace:null,tournamentId,tournamentAward:0,replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);
   if(seated.length<2 || s.players.hero.stack===0) {s.matchOver=true;s.result='Матч завершён.';s.street='showdown';return s;}
@@ -159,7 +169,7 @@ function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:
   if(!s.actor) progress(s);
   return s;
 }
-export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTING_CHIPS,blind=20,difficulty:BotDifficulty='normal'):GameState {
+export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTING_CHIPS,blind=20,difficulty:BotDifficulty='normal',format:GameFormat='practice'):GameState {
   const bigBlind=[4,10,20,50].includes(blind)?blind:20;
   const botDifficulty:BotDifficulty=['easy','normal','hard'].includes(difficulty)?difficulty:'normal';
   const startingChips=validStartingChips(selectedChips)?copyInventory(selectedChips):copyInventory(DEFAULT_STARTING_CHIPS);
@@ -167,14 +177,16 @@ export function newMatch(opponents=1,selectedChips:ChipInventory=DEFAULT_STARTIN
   const count=Math.min(5,Math.max(1,Math.floor(opponents)));
   const order=['hero',...Array.from({length:count},(_,i)=>`bot-${i+1}`)];
   const players=Object.fromEntries(order.map((id,i)=>[id,{id,name:i===0?'Ты':BOT_NAMES[i-1],stack:startingStack,chips:copyInventory(startingChips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false} as Player]));
-  return beginHand(players,order,0,1,0,0,0,startingChips,bigBlind,botDifficulty,[]);
+  const tournamentId=`${Date.now()}-${Math.floor(Math.random()*1e9)}`;
+  return beginHand(players,order,0,1,0,0,0,startingChips,bigBlind,botDifficulty,[],format,bigBlind,[],tournamentId);
 }
 export function nextHand(old:GameState):GameState {
   if (!old.result) return old;
-  if (old.matchOver) return newMatch(old.opponentCount,old.startingChips,old.bigBlind,old.botDifficulty);
+  if (old.matchOver) return newMatch(old.opponentCount,old.startingChips,old.initialBlind,old.botDifficulty,old.format);
   const next=nextAround(old,old.buttonIndex,id=>old.players[id].stack>0);
-  if(!next)return newMatch(old.opponentCount,old.startingChips,old.bigBlind,old.botDifficulty);
-  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties,old.startingChips,old.bigBlind,old.botDifficulty,old.replayArchive);
+  if(!next)return newMatch(old.opponentCount,old.startingChips,old.initialBlind,old.botDifficulty,old.format);
+  const blind=old.format==='sitngo'?tournamentBlind(old.initialBlind,old.handNumber+1):old.initialBlind;
+  return beginHand(old.players,old.order,old.order.indexOf(next),old.handNumber+1,old.handsFinished,old.heroWins,old.ties,old.startingChips,blind,old.botDifficulty,old.replayArchive,old.format,old.initialBlind,old.eliminated,old.tournamentId);
 }
 export function amountToCall(s:GameState,id:PlayerId):number {
   const p=s.players[id];return Math.min(p.stack,Math.max(0,s.currentBet-p.streetBet));
@@ -209,6 +221,17 @@ function finishHand(s:GameState,heroWon:boolean,tie:boolean) {
   s.handsFinished++;if(heroWon)s.heroWins++;if(tie)s.ties++;
   s.street='showdown';s.actor=null;
   s.matchOver=s.players.hero.stack===0 || s.order.filter(id=>s.players[id].stack>0).length<=1;
+  if(s.format==='sitngo'){
+    const stillAlive=s.order.filter(id=>s.players[id].stack>0);
+    const knocked=s.order.filter(id=>s.players[id].stack===0&&!s.eliminated.includes(id));
+    if(knocked.includes('hero'))s.heroPlace=stillAlive.length+1;
+    s.eliminated=[...s.eliminated,...knocked];
+    if(s.matchOver){
+      if(s.players.hero.stack>0&&stillAlive.length===1)s.heroPlace=1;
+      s.tournamentAward=tournamentPoints(s.heroPlace??s.order.length);
+      s.result=`${s.result??''} · Место ${s.heroPlace??'?'} из ${s.order.length}. +${s.tournamentAward} очков.`;
+    }
+  }
   snapshot(s,s.result??'Конец раздачи');
   s.replayArchive=[...s.replayArchive,{number:s.handNumber,result:s.result??'',frames:s.replayFrames}].slice(-25);
 }
@@ -337,6 +360,12 @@ export function botMove(s:GameState,id:PlayerId='bot-1'):Action {
 /** Upgrades saved tables from earlier versions, retaining stacks and hands. */
 export function hydrateGameChips(s:GameState):GameState {
   if(!s.bigBlind)s.bigBlind=20;
+  if(!s.initialBlind)s.initialBlind=s.bigBlind;
+  if(!s.format)s.format='practice';
+  if(!Array.isArray(s.eliminated))s.eliminated=[];
+  if(s.heroPlace===undefined)s.heroPlace=null;
+  if(!s.tournamentId)s.tournamentId=`legacy-${s.handNumber}-${s.handsFinished}`;
+  if(s.tournamentAward===undefined)s.tournamentAward=0;
   if(!s.smallBlind)s.smallBlind=s.bigBlind/2;
   if(!s.botDifficulty)s.botDifficulty='normal';
   if(!Array.isArray(s.replayFrames))s.replayFrames=[];
