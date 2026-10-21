@@ -346,10 +346,13 @@ export function botMove(s:GameState,id:PlayerId='bot-1'):Action {
   }else{
     const value=evaluateHand([...p.hand,...s.board]);
     strength=[.18,.34,.56,.76,.8,.86,.94,.975,.995][value.score[0]];
-    if(SUITS.some(suit=>[...p.hand,...s.board].filter(c=>c.suit===suit).length===4))strength=Math.max(strength,.39);
+    if(s.street!=='river' && SUITS.some(suit=>[...p.hand,...s.board].filter(c=>c.suit===suit).length===4))strength=Math.max(strength,.39);
+    if(s.board.length===5 && compareValues(value,evaluateHand(s.board))===0 && value.score[0]>=4)strength=Math.min(strength,.29);
+    if(value.score[0]===1)strength+=Math.min(.09,(value.score[1]??0)/14*.09);
   }
   const level=s.botDifficulty==='hard'?.06:s.botDifficulty==='easy'?-.06:0;
-  const early=s.order.indexOf(id)<s.order.length/2?-.015:.015;
+  const seatOffset=(s.order.indexOf(id)-s.buttonIndex+s.order.length)%s.order.length;
+  const early=seatOffset>0&&seatOffset<=Math.floor(s.order.length/2)?-.015:.015;
   const rating=strength+style.looseness+level+early;
   const pressure=(s.currentBet>0?toCall/(p.stack+toCall||1):0);
   const random=Math.random();
