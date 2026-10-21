@@ -281,3 +281,28 @@ test('simultaneous knockout ranks players by chips before the hand',()=>{
  assert.equal(s.players['bot-2'].stack,3000);
  assert.equal(s.tournamentAward,20);
 });
+
+
+test('odd chip from split main pot follows first seat after the dealer',()=>{
+  let s=controlledRiver([101,200,200]);
+  s.players['bot-1'].hand=[{rank:14,suit:'♦'},{rank:14,suit:'♣'}];
+  s=settleScripted(s);
+  // Main pot 303: hero and bot-1 split 151 each, odd chip to bot-1.
+  // Side pot 198: bot-1 wins against bot-2.
+  assert.equal(s.players.hero.stack,1050);
+  assert.equal(s.players['bot-1'].stack,1150);
+  assert.equal(s.players['bot-2'].stack,800);
+  assert.equal(s.lastPayouts.hero,151);
+  assert.equal(s.lastPayouts['bot-1'],350);
+  assert.equal(s.lastPot,501);
+  assert.equal(Object.values(s.lastPayouts).reduce((a,b)=>a+b,0),501);
+});
+test('river bot does not treat a public royal flush as a private value hand',()=>{
+  const s=newMatch(1);
+  s.actor='bot-1';s.street='river';s.currentBet=0;
+  s.board=[{rank:10,suit:'♠'},{rank:11,suit:'♠'},{rank:12,suit:'♠'},{rank:13,suit:'♠'},{rank:14,suit:'♠'}];
+  s.players['bot-1'].hand=[{rank:2,suit:'♦'},{rank:3,suit:'♣'}];
+  const originalRandom=Math.random;
+  try{Math.random=()=>.05;assert.equal(botMove(s,'bot-1').kind,'check');}
+  finally{Math.random=originalRandom;}
+});
