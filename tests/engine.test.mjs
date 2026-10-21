@@ -220,3 +220,63 @@ test('Sit & Go ends with an actual placement and score that does not mint chips'
  assert.equal(s.replayArchive.length>0,true);
  assert.equal(s.replayArchive.at(-1).frames.at(-1).street,'showdown');
 });
+
+
+import {emptyInventory, moveChips, makeChangeForAmount} from '../src/chips.ts';
+
+function controlledRiver(contributions,startingStacks=[1000,1000,1000]){
+  let s=newMatch(2);
+  const ids=['hero','bot-1','bot-2'];
+  const hands=[
+    [{rank:14,suit:'♠'},{rank:14,suit:'♥'}],
+    [{rank:13,suit:'♠'},{rank:13,suit:'♥'}],
+    [{rank:12,suit:'♠'},{rank:12,suit:'♥'}]
+  ];
+  s.board=[{rank:2,suit:'♣'},{rank:4,suit:'♦'},{rank:7,suit:'♣'},{rank:9,suit:'♦'},{rank:11,suit:'♣'}];
+  s.street='river';s.currentBet=0;s.pot=0;s.potChips=emptyInventory();s.actor='hero';s.result=null;
+  s.handStartingStacks={};
+  for(let i=0;i<ids.length;i++){
+    const p=s.players[ids[i]];
+    p.hand=hands[i];p.stack=startingStacks[i];p.chips=inventoryFromAmount(startingStacks[i]);
+    p.streetBet=0;p.streetChips=emptyInventory();p.contributed=0;p.acted=false;p.folded=false;
+    s.handStartingStacks[ids[i]]=startingStacks[i];
+    const amount=contributions[i];
+    assert.ok(makeChangeForAmount(p.chips,amount));
+    moveChips(p.chips,s.potChips,amount);p.stack-=amount;p.contributed=amount;s.pot+=amount;
+  }
+  return s;
+}
+function settleScripted(s){
+  for(let i=0;i<5&&!s.result;i++){
+    assert.ok(s.actor);
+    s=act(s,s.actor,{kind:'check'});
+  }
+  assert.ok(s.result,'scripted showdown must settle');
+  return s;
+}
+test('reference side pot: short hero wins main, second best wins side',()=>{
+  let s=controlledRiver([100,200,200]);
+  s=settleScripted(s);
+  assert.equal(s.players.hero.stack,1200,'hero receives 300 main pot');
+  assert.equal(s.players['bot-1'].stack,1000,'second hand receives 200 side pot');
+  assert.equal(s.players['bot-2'].stack,800);
+  assert.equal(s.lastPot,500);
+  assert.equal(s.lastPayouts.hero,300);
+  assert.equal(s.lastPayouts['bot-1'],200);
+  assert.equal(s.pot,0);
+  assert.equal(chipInventoryTotal(s.potChips),0);
+  assert.equal(s.replayFrames.at(-1).pot,500,'replay must retain settled pot');
+});
+test('simultaneous knockout ranks players by chips before the hand',()=>{
+ let s=controlledRiver([300,500,500],[300,500,2200]);
+ s.players.hero.hand=[{rank:2,suit:'♥'},{rank:3,suit:'♥'}];
+ s.players['bot-1'].hand=[{rank:5,suit:'♥'},{rank:6,suit:'♥'}];
+ s.players['bot-2'].hand=[{rank:14,suit:'♣'},{rank:14,suit:'♦'}];
+ s.format='sitngo';
+ s=settleScripted(s);
+ assert.equal(s.heroPlace,3,'shortest busted player finishes third');
+ assert.equal(s.players.hero.stack,0);
+ assert.equal(s.players['bot-1'].stack,0);
+ assert.equal(s.players['bot-2'].stack,3000);
+ assert.equal(s.tournamentAward,20);
+});
