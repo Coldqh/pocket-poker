@@ -187,3 +187,43 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .scenario-explanation small{font-size:11px;opacity:.7;display:block;margin-top:9px}
 @media(max-width:385px){.setup-denom{grid-template-columns:42px minmax(42px,1fr) 120px;gap:5px}.setup-counter{grid-template-columns:35px 1fr 35px}.setup-denom-name strong{font-size:16px}.table-setup{padding-left:12px;padding-right:12px}}
 @media(prefers-reduced-motion:reduce){.reading-slide{animation:none}}
+
+/* 0.7 — compact academy felt, physical chips, fold motion and lean home */
+.home-minimal{min-height:calc(100dvh - 170px);padding-top:clamp(18px,5vh,55px)}
+.home-minimal .resume-tile{min-height:230px}
+.scenario-content .scenario-table{
+  width:min(100% - 24px,410px)!important;
+  height:auto!important;
+  aspect-ratio:1.95!important;
+  margin:22px auto 28px!important;
+  border-radius:47% / 44%!important;
+  border:8px solid #304d36;
+  background:#16472d url('./assets/felt-texture.svg') center / cover no-repeat;
+  box-shadow:0 0 0 2px #647d50,0 9px 20px #0008,inset 0 0 14px #091e14b0;
+  overflow:visible;
+  box-sizing:border-box;
+}
+.scenario-content .scenario-board{position:absolute;top:33%;left:50%;transform:translate(-50%,-50%);max-width:94%;justify-content:center}
+.scenario-content .scenario-hand{bottom:-10px;top:auto;left:50%;transform:translateX(-50%)}
+.scenario-content .scenario-face{width:clamp(34px,9vw,43px);height:clamp(48px,12vw,61px)}
+.card-face.card-back{background:repeating-linear-gradient(45deg,#e0d8b51c 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,#b6c49a20 0 2px,transparent 2px 8px),#233a33!important;border:2px solid #ecd4a6;box-shadow:inset 0 0 0 2px #365d4a,0 3px 5px #0005;color:#eddcb3}
+.card-face.card-back .back-pattern{font:700 13px ui-sans-serif,system-ui,sans-serif;display:grid;place-items:center;width:65%;height:67%;border:1px solid #d6c29588;border-radius:2px;letter-spacing:0!important}
+.card-face.card-small.card-back .back-pattern{font-size:9px!important}
+.fold-flight{position:absolute;z-index:16;left:var(--fold-x);top:var(--fold-y);display:flex;gap:0;transform:translate(-50%,-50%);pointer-events:none;animation:fold-to-muck .68s cubic-bezier(.18,.75,.25,1) forwards}
+.fold-flight .card-face+.card-face{margin-left:-8px;transform:rotate(9deg)}
+.fold-flight .card-face:first-child{transform:rotate(-12deg)}
+@keyframes fold-to-muck {
+  0%{opacity:1;left:var(--fold-x);top:var(--fold-y);scale:1;filter:brightness(1)}
+  65%{opacity:1;left:50%;top:53%;scale:.74;filter:brightness(.82)}
+  100%{opacity:0;left:50%;top:53%;scale:.6;filter:brightness(.6)}
+}
+.motion-fast .fold-flight{animation-duration:.31s}
+.action-change{background:#e4b77a!important;color:#1b2b21!important;font-size:12px!important}
+.raise-change-note{font-size:12px;color:#efc68d;margin:12px 0 0}
+.exchange-list{display:grid;gap:8px;margin:12px 0}
+.exchange-list h3{font-size:14px;margin:2px 0 6px}
+.exchange-list button{display:flex;align-items:center;justify-content:center;gap:14px;border:1px solid #55745b;background:#2c4736;color:#e8f3e2;padding:12px;border-radius:10px;font-size:14px;min-height:43px;font-weight:700}
+.exchange-list button span{color:#e6c58d}
+.exchange-list .exchange-suggest{background:#e4c78f;color:#1b2c21}
+@media(max-width:380px){.scenario-content .scenario-table{width:min(100% - 14px,355px)!important;aspect-ratio:1.78!important}}
+@media(prefers-reduced-motion:reduce){.fold-flight{animation:none!important;display:none!important}}

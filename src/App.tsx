@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type CSSProperties } from 'react';
-import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, hydrateGameChips, type Card, type GameState } from './engine';
+import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, hydrateGameChips, exchangeForBet, exchangePlayerChip, type Card, type GameState } from './engine';
 import { modules, type Module } from './lessons';
-import { breakdownChips, collectedPot, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, type ChipInventory, type ChipGroup } from './chips';
+import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, type ChipInventory, type ChipGroup } from './chips';
 
 type Page = 'home' | 'play' | 'academy' | 'stats';
 type Profile = { configured: boolean; experience: 'new' | 'some' | 'confident'; known: string[]; focus: string[] };
@@ -71,7 +71,7 @@ function Icon({name,size=22}:{name:string;size?:number}) {
 function CardFace({card,hidden=false,small=false}:{card?:Card;hidden?:boolean;small?:boolean}){
   const red=card?.suit==='♥'||card?.suit==='♦';
   return <div className={`card-face ${small?'card-small':''} ${hidden?'card-back':''} ${!card&&!hidden?'card-empty':''} ${red?'red':''}`} aria-label={hidden?'Закрытая карта':card?cardText(card):'Место для карты'}>
-    {!hidden&&card?<><span>{cardText(card)}</span><b>{card.suit}</b></>:hidden?<span className="back-pattern">♠</span>:null}
+    {!hidden&&card?<><span>{cardText(card)}</span><b>{card.suit}</b></>:hidden?<span className="back-pattern">P</span>:null}
   </div>;
 }
 function ScenarioFace({value}:{value:string}){return <div className={`card-face scenario-face ${value.includes('♥')||value.includes('♦')?'red':''}`}><span>{value}</span><b>{value.slice(-1)}</b></div>;}
@@ -82,18 +82,16 @@ function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
 function Header({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
   return <header className="app-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><button className={`header-icon ${page==='stats'?'selected':''}`} title="Прогресс" aria-label="Прогресс" onClick={()=>onChange('stats')}><Icon name="stats"/></button></header>;
 }
-function Home({game,profile,progress,onChange,onStudy}:{game:GameState;profile:Profile;progress:Progress;onChange:(page:Page)=>void;onStudy:(id:string)=>void}){
-  const recommended=modules.find(m=>profile.focus.includes(m.id) && !progress.completed.includes(m.id)) ?? modules.find(m=>!progress.completed.includes(m.id)) ?? modules[0];
-  return <section className="home-screen"><div className="home-greeting"><span className="small-muted">Твоя игра</span><h1>С чего начнём?</h1></div>
+function Home({game,onChange}:{game:GameState;onChange:(page:Page)=>void}){
+  return <section className="home-screen home-minimal">
     <button className="resume-tile" onClick={()=>onChange('play')}>
-      <div className="resume-content"><span className="resume-tag">♠ &nbsp; TEXAS HOLD’EM</span><h2>{game.handsFinished || game.handNumber>1?'Вернуться за стол':'Сыграть в покер'}</h2><span>{playerCountLabel(game.opponentCount+1)} · Блайнды 10/20 · Раздача {game.handNumber}</span></div>
+      <div className="resume-content"><span className="resume-tag">TEXAS HOLD’EM</span>
+        <h2>{game.handsFinished||game.handNumber>1?'Вернуться за стол':'Играть в покер'}</h2>
+        <span>{playerCountLabel(game.opponentCount+1)} · 10/20 · Раздача {game.handNumber}</span>
+      </div>
       <div className="resume-art" aria-hidden="true"><div className="resume-card first">A<span>♠</span></div><div className="resume-card second">K<span>♥</span></div></div>
       <span className="resume-cta">Играть <Icon name="chevron" size={18}/></span>
     </button>
-    <div className="home-next"><div className="section-label-row"><h2>Продолжить обучение</h2><span>{progress.completed.length}/{modules.length}</span></div>
-      <button className="learning-row" onClick={()=>profile.configured?onStudy(recommended.id):onChange('academy')}><div className="learning-icon"><Icon name="book"/></div><div><strong>{profile.configured?recommended.title:'Выбрать интересы'}</strong><span>{profile.configured?`${recommended.duration} · Теория и практика`:'Настроить свой маршрут'}</span></div><Icon name="chevron" size={19}/></button>
-    </div>
-    <div className="home-footer"><button onClick={()=>onChange('academy')}>Все темы <Icon name="chevron" size={16}/></button><button onClick={()=>onChange('stats')}>Мой прогресс <Icon name="chevron" size={16}/></button></div>
   </section>;
 }
 const seatCoords:Record<number,{x:number;y:number}[]>={
@@ -114,7 +112,7 @@ function Opponent({game,id,seat,action,onInspect}:{game:GameState;id:string;seat
       <span className="opponent-stack">{out?'Выбыл':money(p.stack)}</span>
       {!out&&<ChipRack amount={p.stack} groups={inventoryGroups(p.chips)} size="mini" maxGroups={2}/>}
     </button>
-    {p.hand.length>0&&<div className="opponent-cards">{p.hand.map((c,i)=><CardFace key={`${game.handNumber}-${i}`} card={c} small hidden={!game.revealBot||p.folded}/>)}</div>}
+    {p.hand.length>0&&!p.folded&&<div className="opponent-cards">{p.hand.map((c,i)=><CardFace key={`${game.handNumber}-${i}`} card={c} small hidden={!game.revealBot||p.folded}/>)}</div>}
     {action&&<span key={action} className="seat-action opponent-action">{action}</span>}
   </div>;
 }
@@ -156,6 +154,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
   const [notice,setNotice]=useState<{seq:number;player:string;message:string}|null>(null);
   type ChipFlight = {key:string;from:{x:number;y:number};to:{x:number;y:number};kind:'bet'|'collect'|'award'};
   const [flights,setFlights]=useState<ChipFlight[]>([]);
+  const [foldFlights,setFoldFlights]=useState<{key:number;x:number;y:number}[]>([]);
   const [inspected,setInspected]=useState<string|null>(null);
   const motionKey=useRef(0);
   const previousGame=useRef(game);
@@ -164,6 +163,12 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     const previous=previousGame.current;
     previousGame.current=game;
     if(game.handNumber!==previous.handNumber)return;
+    const opponents=game.order.filter(id=>id!=='hero');
+    const folded=game.order.filter(id=>!previous.players[id].folded&&game.players[id].folded&&previous.players[id].hand.length===2);
+    if(folded.length)setFoldFlights(items=>[...items,...folded.map(id=>{
+      const coord=id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][opponents.indexOf(id)];
+      return {key:++motionKey.current,x:coord.x,y:coord.y};
+    })]);
     if(game.history[0]!==previous.history[0]) {
       const event=game.history.find(item=>/ · (?:фолд|колл|рейз|чек)(?: |$)/.test(item));
       if(event){
@@ -201,21 +206,33 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     const timeout=window.setTimeout(()=>setNotice(value=>value?.seq===notice.seq?null:value),speed==='fast'?480:1050);
     return ()=>window.clearTimeout(timeout);
   },[notice,speed]);
+  useEffect(()=>{
+    if(!foldFlights.length)return;
+    const timer=window.setTimeout(()=>setFoldFlights([]),speed==='fast'?360:780);
+    return ()=>window.clearTimeout(timer);
+  },[foldFlights,speed]);
   const hero=game.players.hero;
-  const onStreet=game.result?0:collectedPot(game.pot,game.order.map(id=>game.players[id].streetBet));
+  const onStreet=chipInventoryTotal(game.potChips);
   const toCall=amountToCall(game,'hero');
   const minRaise=Math.min(minRaiseTo(game),maxRaiseTo(game,'hero'));
   const maxRaise=maxRaiseTo(game,'hero');
   const boundedRaise=Math.min(maxRaise,Math.max(minRaise,Math.floor(raise || minRaise)));
   const canRaise=maxRaise>game.currentBet&&maxRaise>hero.streetBet;
   const heroTurn=game.actor==='hero'&&!game.result;
+  const canCallWithChips=canPayChips(hero.chips,toCall);
+  const raiseContribution=Math.max(0,boundedRaise-hero.streetBet);
+  const canRaiseWithChips=canPayChips(hero.chips,raiseContribution);
   useEffect(()=>{setRaise(minRaise);setRaiseOpen(false);},[game.handNumber,game.street,game.currentBet,minRaise]);
   useEffect(()=>{
     if(!game.actor||game.actor==='hero'||game.result)return;
     const id=game.actor;const timeout=setTimeout(()=>setGame(s=>s.actor===id?act(s,id,botMove(s,id)):s),speed==='fast'?140:650);
     return ()=>clearTimeout(timeout);
   },[game,setGame,speed]);
-  const submit=(kind:'fold'|'call'|'check'|'raise')=>{setGame(s=>act(s,'hero',{kind,to:kind==='raise'?boundedRaise:undefined}));setRaiseOpen(false);};
+  const submit=(kind:'fold'|'call'|'check'|'raise')=>{
+    if(kind==='call'&&!canCallWithChips)return;
+    if(kind==='raise'&&!canRaiseWithChips)return;
+    setGame(s=>act(s,'hero',{kind,to:kind==='raise'?boundedRaise:undefined}));setRaiseOpen(false);
+  };
   const startNew=()=>{setSheet(null);setRaiseOpen(false);onNewTable();};
   return <section className={`game-screen motion-${speed}`}>
     <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>Texas Hold’em</strong><span>{streetName[game.street]} · 10/20 · #{game.handNumber}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>setSheet('history')}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
@@ -228,19 +245,20 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
         const coords= id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][game.order.filter(v=>v!=='hero').indexOf(id)];
         const pos=betCoordinates(coords);
         return <div key={`bet-${id}`} className={`wager-stack wager-${id==='hero'?'hero':'opponent'}`} style={{'--bet-x':`${pos.x}%`,'--bet-y':`${pos.y}%`} as CSSProperties}>
-          <ChipRack amount={player.streetBet} size="bet" maxGroups={3}/>
+          <ChipRack amount={player.streetBet} groups={inventoryGroups(player.streetChips)} size="bet" maxGroups={3}/>
           <span className="wager-total">{money(player.streetBet)}</span>
         </div>;
       })}
       <div className="table-center"><span className="pot-label">{game.result?'РАЗЫГРАНО':'ОБЩИЙ БАНК'}</span><strong className="pot-number" key={`${game.handNumber}-${game.pot}`}>{money(game.pot)}</strong>
-        {onStreet>0&&<div className="collected-stack"><ChipRack amount={onStreet} size="large"/></div>}
+        {onStreet>0&&<div className="collected-stack"><ChipRack amount={onStreet} groups={inventoryGroups(game.potChips)} size="large"/></div>}
         <div className="community-cards">{Array.from({length:5},(_,i)=><CardFace key={`${game.handNumber}-${i}-${game.board[i]?cardText(game.board[i]):'empty'}`} card={game.board[i]}/>)}</div>
       </div>
+      {foldFlights.map(f=><div key={`fold-${f.key}`} className="fold-flight" style={{'--fold-x':`${f.x}%`,'--fold-y':`${f.y}%`} as CSSProperties} aria-hidden="true"><CardFace hidden small/><CardFace hidden small/></div>)}
       {flights.map(f=><div key={f.key} className={`chip-flight-real chip-motion-${f.kind}`} style={{'--start-x':`${f.from.x}%`,'--start-y':`${f.from.y}%`,'--end-x':`${f.to.x}%`,'--end-y':`${f.to.y}%`} as CSSProperties} aria-hidden="true"><i/><i/><i/></div>)}
       <span className="table-event" key={notice?.seq??'none'} role="status" aria-live="polite">{notice?`${game.players[notice.player]?.name??'Игрок'} · ${notice.message}`:''}</span>
       <div className={`table-hero ${heroTurn?'acting':''}`}>
         <button className="hero-bankroll" onClick={()=>setInspected('hero')} aria-label={`Твой стек ${money(hero.stack)} фишек, подробнее`}><span>ТЫ {game.button==='hero'?'· D':''}</span><strong>{money(hero.stack)}</strong><ChipRack amount={hero.stack} groups={inventoryGroups(hero.chips)} size="small" maxGroups={3}/></button>
-        <div className="hero-cards">{hero.hand.map((card,i)=><CardFace key={`${game.handNumber}-${i}`} card={card} small/>)}</div>
+        <div className="hero-cards">{!hero.folded&&hero.hand.map((card,i)=><CardFace key={`${game.handNumber}-${i}`} card={card} small/>)}</div>
         {notice?.player==='hero'&&<span key={notice.seq} className="seat-action hero-action">{notice.message}</span>}
       </div>
     </div>
@@ -248,13 +266,17 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     <div className="action-dock">
       {game.result?<button className="big-primary" onClick={()=>game.matchOver?onNewTable():setGame(s=>nextHand(s))}>{game.matchOver?'Новый матч':'Следующая раздача'} <Icon name="chevron" size={18}/></button>:
       <><div className="action-caption"><span>{heroTurn?'Твой ход':game.actor?`${game.players[game.actor]?.name??'Соперник'} думает…`:'Продолжаем раздачу'}</span><strong>{heroTurn?toCall?`К коллу ${money(toCall)}`:'Можно сделать чек':''}</strong></div>
-      <div className="table-actions"><button className="action-fold" disabled={!heroTurn} onClick={()=>submit('fold')}>Фолд</button><button className="action-call" disabled={!heroTurn} onClick={()=>submit(toCall?'call':'check')}>{toCall?`Колл ${money(toCall)}`:'Чек'}</button><button className="action-raise" disabled={!heroTurn||!canRaise} onClick={()=>setRaiseOpen(true)}>Рейз</button></div></>}
+      <div className="table-actions"><button className="action-fold" disabled={!heroTurn} onClick={()=>submit('fold')}>Фолд</button>{toCall>0&&!canCallWithChips?<button className="action-change" disabled={!heroTurn} onClick={()=>setGame(s=>exchangeForBet(s,'hero',amountToCall(s,'hero')))}>Размен для колла</button>:<button className="action-call" disabled={!heroTurn} onClick={()=>submit(toCall?'call':'check')}>{toCall?`Колл ${money(toCall)}`:'Чек'}</button>}<button className="action-raise" disabled={!heroTurn||!canRaise} onClick={()=>setRaiseOpen(true)}>Рейз</button></div></>}
     </div>
-    {raiseOpen&&canRaise&&<div className="sheet-scrim raise-scrim" onClick={()=>setRaiseOpen(false)}><section className="raise-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Выбор размера рейза"><div className="raise-dialog-head"><div><span className="small-muted">Твой рейз</span><h2>Выбери размер</h2></div><button className="icon-button" aria-label="Закрыть окно рейза" onClick={()=>setRaiseOpen(false)}><Icon name="close"/></button></div><div className="raise-summary"><div><span>К коллу</span><strong>{money(toCall)}</strong></div><div><span>Мин. рейз</span><strong>{money(minRaise)}</strong></div><div><span>Макс.</span><strong>{money(maxRaise)}</strong></div></div><div className="raise-panel"><div><span>Рейз до</span><label className="raise-input-label"><input aria-label="Точный размер рейза" inputMode="numeric" type="number" min={minRaise} max={maxRaise} step="1" value={boundedRaise} onChange={e=>{if(e.target.value!=='')setRaise(Number(e.target.value));}}/><span>фишек</span></label></div><input type="range" aria-label="Размер рейза" min={minRaise} max={maxRaise} step={1} value={boundedRaise} onChange={e=>setRaise(Number(e.target.value))}/><div className="raise-presets"><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',.5))}>½ банка</button><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',1))}>Банк</button><button onClick={()=>setRaise(maxRaise)}>Олл-ин</button></div><ChipRack amount={boundedRaise} size="small" maxGroups={5}/></div><div className="raise-dialog-actions"><button className="ghost-button" onClick={()=>setRaiseOpen(false)}>Отмена</button><button className="big-primary" onClick={()=>submit('raise')}>Подтвердить рейз</button></div></section></div>}
+    {raiseOpen&&canRaise&&<div className="sheet-scrim raise-scrim" onClick={()=>setRaiseOpen(false)}><section className="raise-dialog" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Выбор размера рейза"><div className="raise-dialog-head"><div><span className="small-muted">Твой рейз</span><h2>Выбери размер</h2></div><button className="icon-button" aria-label="Закрыть окно рейза" onClick={()=>setRaiseOpen(false)}><Icon name="close"/></button></div><div className="raise-summary"><div><span>К коллу</span><strong>{money(toCall)}</strong></div><div><span>Мин. рейз</span><strong>{money(minRaise)}</strong></div><div><span>Макс.</span><strong>{money(maxRaise)}</strong></div></div><div className="raise-panel"><div><span>Рейз до</span><label className="raise-input-label"><input aria-label="Точный размер рейза" inputMode="numeric" type="number" min={minRaise} max={maxRaise} step="1" value={boundedRaise} onChange={e=>{if(e.target.value!=='')setRaise(Number(e.target.value));}}/><span>фишек</span></label></div><input type="range" aria-label="Размер рейза" min={minRaise} max={maxRaise} step={1} value={boundedRaise} onChange={e=>setRaise(Number(e.target.value))}/><div className="raise-presets"><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',.5))}>½ банка</button><button onClick={()=>setRaise(potFractionRaiseTo(game,'hero',1))}>Банк</button><button onClick={()=>setRaise(maxRaise)}>Олл-ин</button></div>{!canRaiseWithChips?<p className="raise-change-note">Для этой ставки понадобится размен.</p>:<ChipRack amount={raiseContribution} size="small" maxGroups={5}/>}</div><div className="raise-dialog-actions"><button className="ghost-button" onClick={()=>setRaiseOpen(false)}>Отмена</button>{!canRaiseWithChips?<button className="big-primary" onClick={()=>setGame(s=>exchangeForBet(s,'hero',Math.max(0,boundedRaise-s.players.hero.streetBet)))}>Разменять для рейза</button>:<button className="big-primary" onClick={()=>submit('raise')}>Подтвердить рейз</button>}</div></section></div>}
     {inspected&&game.players[inspected]&&<div className="sheet-scrim" onClick={()=>setInspected(null)}><section className="bottom-sheet chips-detail-sheet" role="dialog" aria-modal="true" aria-label="Разбивка фишек по номиналам" onClick={e=>e.stopPropagation()}>
       <div className="sheet-head"><h2>{game.players[inspected].name} · {money(game.players[inspected].stack)}</h2><button className="icon-button" aria-label="Закрыть" onClick={()=>setInspected(null)} autoFocus><Icon name="close"/></button></div>
       <ChipRack amount={game.players[inspected].stack} groups={inventoryGroups(game.players[inspected].chips)} size="large"/>
-      <p className="chip-sheet-caption">Фишки можно разменивать. Сумма всех номиналов равна стеку игрока.</p>
+      {inspected==='hero'&&!game.result&&<div className="exchange-list"><h3>Разменять фишку</h3>{CHIP_DENOMINATIONS.slice(0,-1).filter(value=>hero.chips[value]>0).map(value=>{
+      const lower=CHIP_DENOMINATIONS[CHIP_DENOMINATIONS.indexOf(value)+1];
+      return <button key={value} onClick={()=>setGame(s=>exchangePlayerChip(s,'hero',value))}>1 × {value} <span>→</span> {value/lower} × {lower}</button>;
+    })}{toCall>0&&!canCallWithChips&&<button className="exchange-suggest" onClick={()=>setGame(s=>exchangeForBet(s,'hero',amountToCall(s,'hero')))}>Разменять для колла {money(toCall)}</button>}</div>}
+      <p className="chip-sheet-caption">Каждая фишка сохраняет номинал. Размен происходит только по команде.</p>
     </section></div>}
     {sheet&&<div className="sheet-scrim" onClick={()=>setSheet(null)}><section className="bottom-sheet" onKeyDown={e=>{if(e.key==='Escape')setSheet(null);}} role="dialog" aria-modal="true" aria-label={sheet==='settings'?'Настройки стола':'История раздачи'} onClick={e=>e.stopPropagation()}>
       <div className="sheet-head"><h2>{sheet==='settings'?'Настройки стола':'История раздачи'}</h2><button className="icon-button" autoFocus aria-label="Закрыть" onClick={()=>setSheet(null)}><Icon name="close"/></button></div>
@@ -336,11 +358,10 @@ export default function App(){
   const navigate=(to:Page)=>{setPage(to);window.scrollTo({top:0,behavior:'instant'});};
   const startTable=(seats:number,chips:ChipInventory)=>{setGame(newMatch(seats,chips));setStarted(true);};
   const configureTable=()=>{if(started&&(game.handsFinished>0||game.handNumber>1||game.pot>0)&&!window.confirm('Настроить новый стол? Текущий матч будет заменён.'))return;setStarted(false);};
-  const openStudy=(id:string)=>{setSession({...emptySession,moduleId:id});navigate('academy');};
-  return <div className={`app-shell ${page==='play'?'playing':''}`}>
+    return <div className={`app-shell ${page==='play'?'playing':''}`}>
     {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Главная',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Учёба',icon:'book'},{page:'stats',name:'Прогресс',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET 0.6 · только условные фишки</small></aside>}
     <main className="app-main">{page!=='play'&&<Header page={page} onChange={navigate}/>}
-      {page==='home'?<Home game={game} profile={profile} progress={progress} onChange={navigate} onStudy={openStudy}/>:
+      {page==='home'?<Home game={game} onChange={navigate}/>:
         page==='play'?(started?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} onStart={startTable} onExit={()=>navigate('home')}/>):
         page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession}/>:
         <Stats game={game} progress={progress}/>}

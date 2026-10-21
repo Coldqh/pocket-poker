@@ -65,3 +65,8 @@ npm run build
 ## 0.6 — настройка стола и обучение
 
 Перед первым столом выбираются номиналы и количество фишек, затем число соперников. Наборы номиналов хранятся за игроками, а банк автоматически разменивает фишки без изменения общей стоимости. Начальные стеки одинаковы. Старые сохранения мигрируют в новую модель. Окно рейза не включает клавиатуру автоматически. Академия выдаёт теорию короткими экранами, подсвечивает слабые темы и предлагает повторение.
+
+
+## 0.7 — physical chips and gameplay polish
+
+Player chips, current street wagers and collected pots retain exact denominations. Only an explicit exchange rearranges the human player's chips; bots and the dealer make change when needed to post blinds or divide the pot. Betting actions never silently recompose the player's stack. Academy felt has a compact aspect ratio, folded cards animate toward the muck and all card backs use a neutral POCKET monogram. The home screen is streamlined to one play action.
