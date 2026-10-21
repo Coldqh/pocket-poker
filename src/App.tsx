@@ -75,6 +75,7 @@ function CardFace({card,hidden=false,small=false}:{card?:Card;hidden?:boolean;sm
     {!hidden&&card?<><span>{cardText(card)}</span><b>{card.suit}</b></>:hidden?<span className="back-pattern">P</span>:null}
   </div>;
 }
+function ScenarioFace({value}:{value:string}){return <div className={`card-face scenario-face ${value.includes('♥')||value.includes('♦')?'red':''}`}><span>{value}</span><b>{value.slice(-1)}</b></div>;}
 function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
   const tabs:{key:Page;label:string;icon:string}[]=[{key:'home',label:'Клуб',icon:'home'},{key:'academy',label:'Истории',icon:'book'},{key:'stats',label:'Я',icon:'stats'}];
   return <nav className="tabbar" aria-label="Основные разделы">{tabs.map(tab=><button key={tab.key} aria-current={page===tab.key?'page':undefined} className={page===tab.key?'active':''} onClick={()=>onChange(tab.key)}><Icon name={tab.icon}/><span>{tab.label}</span></button>)}</nav>;
