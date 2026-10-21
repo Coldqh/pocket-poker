@@ -100,3 +100,8 @@ Blinds (2/4, 5/10, 10/20, 25/50), 3 selectable bot difficulty levels, five consi
 ## POCKET 2.1 — After Hours, structural redesign
 
 Instead of the neon Glow recolor, POCKET now uses a soft graphite/sage/slate editorial palette. Navigation and screen composition were rebuilt: the lounge opens an actual saved game or launches a quick playable scenario; the academy starts with an interactive spot and hides its full catalog in an expandable section; the player profile is a concise card with expandable records. The table setup keeps blind/difficulty settings in an advanced disclosure, and the game has a street-progress ribbon. Existing games, chip accounting, tests and persisted profile keys remain intact. No fabricated streaks, artificial XP or manipulative prompts.
+
+
+## POCKET 2.2 — учиться проще
+
+Академия теперь начинает с игровых решений, а не длинных блоков теории: контекст раздачи показан сразу, подсказка и подробные объяснения открываются по желанию. Добавлены три коротких начальных упражнения с базовыми картами и действиями, без обязательной анкеты. Экран лаборатории больше не встречает пользователя формулами: сначала выбор из трёх понятных экспериментов («Кто выиграл?», «Ответить или сбросить?», «Повторить раздачу»), затем одно действие и короткое объяснение. Калькулятор, ручное редактирование карт и детали статистики остались под раскрываемыми настройками. Предыдущие сохранения и существующие учебные темы продолжают работать; это не солвер покерной стратегии.
