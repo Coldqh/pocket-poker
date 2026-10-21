@@ -274,7 +274,7 @@ function showdown(s:GameState) {
   }
   heroPayout=s.players.hero.stack-heroBefore;
   s.lastPot=settledPot;
-  s.lastPayouts=Object.fromEntries(s.order.map(id=>[id,s.players[id].stack-beforeStacks[id]]).filter(([,amount])=>amount>0));
+  s.lastPayouts=Object.fromEntries(s.order.map(id=>[id,s.players[id].stack-beforeStacks[id]]).filter(([,amount])=>Number(amount)>0));
   if(chipInventoryTotal(s.potChips)!==0)throw new Error('Банк не распределён полностью');
   s.pot=0;s.revealBot=true;
   const heroValue=values.hero?.name.toLowerCase()??'фолд';
