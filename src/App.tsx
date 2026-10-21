@@ -353,8 +353,6 @@ function Study({module,session,setSession,onBack,onFinish}:{module:Module;sessio
     else setSession(s=>({...s,index:s.index+1,choice:null,correct}));
     setHintVisible(false);setExplainMore(false);setTheoryVisible(false);
   };
-  const currentTheory=Math.min(Math.max(0,session.theoryIndex??0),module.theory.length-1);
-  const example=module.theory[currentTheory];
   const takeaway=scenario.explanation.split(/\.\s+/)[0]+(scenario.explanation.includes('. ')?'.':'');
   const complete=session.phase==='finished';
   return <div className="study-screen easy-study">
