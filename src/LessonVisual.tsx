@@ -1,7 +1,6 @@
 import {type CSSProperties} from 'react';
 import type {StoryScene} from './story-lessons';
 
-type RenderedCard={value:string;hidden?:boolean;marked?:boolean;delay?:number};
 function Face({value,hidden=false,marked=false,delay=0}:{value:string;hidden?:boolean;marked?:boolean;delay?:number}){
  const red=value.includes('♥')||value.includes('♦');
  return <div className={'story-card '+(hidden?'back ':'')+(red?'red ':'')+(marked?'marked':'')} style={{'--deal-delay':delay+'ms'} as CSSProperties} aria-label={hidden?'Карта рубашкой вверх':value}>
