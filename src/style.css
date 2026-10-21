@@ -192,7 +192,7 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .home-minimal{min-height:calc(100dvh - 170px);padding-top:clamp(18px,5vh,55px)}
 .home-minimal .resume-tile{min-height:230px}
 .scenario-content .scenario-table{
-  width:min(100% - 24px,410px)!important;
+  width:min(calc(100% - 24px),410px)!important;
   height:auto!important;
   aspect-ratio:1.95!important;
   margin:22px auto 28px!important;
@@ -225,5 +225,5 @@ button:focus-visible,input:focus-visible{outline:2px solid #edcf9b;outline-offse
 .exchange-list button{display:flex;align-items:center;justify-content:center;gap:14px;border:1px solid #55745b;background:#2c4736;color:#e8f3e2;padding:12px;border-radius:10px;font-size:14px;min-height:43px;font-weight:700}
 .exchange-list button span{color:#e6c58d}
 .exchange-list .exchange-suggest{background:#e4c78f;color:#1b2c21}
-@media(max-width:380px){.scenario-content .scenario-table{width:min(100% - 14px,355px)!important;aspect-ratio:1.78!important}}
+@media(max-width:380px){.scenario-content .scenario-table{width:min(calc(100% - 14px),355px)!important;aspect-ratio:1.78!important}}
 @media(prefers-reduced-motion:reduce){.fold-flight{animation:none!important;display:none!important}}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newMatch,nextHand,act,amountToCall,botMove,maxRaiseTo,minRaiseTo,potFractionRaiseTo,cardText,evaluateHand,compareValues,deckOfCards} from '../src/engine.ts';
+import {newMatch,nextHand,act,amountToCall,botMove,maxRaiseTo,minRaiseTo,potFractionRaiseTo,cardText,evaluateHand,compareValues,deckOfCards,exchangeForBet} from '../src/engine.ts';
 const c=(rank,suit)=>({rank,suit});
 test('52 unique cards',()=>assert.equal(new Set(deckOfCards().map(cardText)).size,52));
 test('ace-low wheel straight',()=>assert.deepEqual(evaluateHand([c(14,'♠'),c(2,'♦'),c(3,'♣'),c(4,'♥'),c(5,'♠')]).score,[4,5]));
@@ -18,6 +18,9 @@ function verifyState(s,count){
  assert.equal(new Set(all.map(cardText)).size,all.length,'unique cards');
  assert.ok(s.players.hero.stack>=0,'nonnegative hero stack');
  assert.ok(s.order.every(id=>s.players[id].stack>=0));
+ assert.ok(s.order.every(id=>chipInventoryTotal(s.players[id].chips)===s.players[id].stack));
+ assert.ok(s.order.every(id=>chipInventoryTotal(s.players[id].streetChips)===s.players[id].streetBet));
+ assert.equal(chipInventoryTotal(s.potChips)+s.order.reduce((n,id)=>n+chipInventoryTotal(s.players[id].streetChips),0),s.pot);
 }
 test('2–6 players: 30 random sessions with folds, raises and all-ins; players can continue at same table',()=>{
  for(let opponents=1;opponents<=5;opponents++){
@@ -46,6 +49,10 @@ test('2–6 players: 30 random sessions with folds, raises and all-ins; players 
         action={kind:'raise',to};
       } else action={kind:toCall?'call':'check'};
     }
+    if(id==='hero'&&['call','raise'].includes(action.kind)){
+      const required=action.kind==='call'?amountToCall(s,id):action.to-s.players[id].streetBet;
+      if(!canPayChips(s.players[id].chips,required))s=exchangeForBet(s,id,required);
+    }
     const next=act(s,id,action);
     assert.notEqual(next,s,`Legal action expected: ${id} ${JSON.stringify(action)} / ${JSON.stringify({street:s.street,currentBet:s.currentBet,stack:s.players[id].stack,streetBet:s.players[id].streetBet})}`);
     s=next;verifyState(s,opponents);
@@ -58,7 +65,8 @@ test('short stack all-in does not reopen a previously closed raise',()=>{
  let s=newMatch(2);
  // Hero opened, bot-1 calls, bot-2 still to act: partial all-in could be simulated
  // by giving bot-2 a short stack (and refunding the removed chips to bot-1).
- s.players['bot-2'].stack=30;s.players['bot-1'].stack+=970;
+ s.players['bot-2'].stack=30;s.players['bot-2'].chips=inventoryFromAmount(30);
+ s.players['bot-1'].stack+=970;s.players['bot-1'].chips=inventoryFromAmount(s.players['bot-1'].stack);
  // Since the previous blinds have already been posted, short all-in is to 50.
  s=act(s,'hero',{kind:'raise',to:40});
  assert.equal(s.actor,'bot-1');
@@ -91,21 +99,41 @@ test('pot fraction presets always respect min and max raise limits',()=>{
  assert.equal(potFractionRaiseTo(s,'hero',1),25);
 });
 
-import {chipInventoryTotal, DEFAULT_STARTING_CHIPS} from '../src/chips.ts';
+import {chipInventoryTotal, inventoryFromAmount, canPayChips, DEFAULT_STARTING_CHIPS} from '../src/chips.ts';
 test('real denominations remain balanced through an entire 3-player hand',()=>{
  let s=newMatch(2,{500:0,100:6,25:12,5:16,1:20});
  assert.equal(s.players.hero.stack,1000);
  for(let i=0;i<200&&!s.result;i++){
    const id=s.actor;
    assert.ok(id);
+   if(id==='hero'&&amountToCall(s,id)>0&&!canPayChips(s.players[id].chips,amountToCall(s,id)))s=exchangeForBet(s,id,amountToCall(s,id));
    s=act(s,id,{kind:amountToCall(s,id)>0?'call':'check'});
-   assert.equal(s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].chips),0)+chipInventoryTotal(s.potChips),3000);
+   assert.equal(s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].chips)+chipInventoryTotal(s.players[p].streetChips),0)+chipInventoryTotal(s.potChips),3000);
    for(const p of s.order)assert.equal(chipInventoryTotal(s.players[p].chips),s.players[p].stack);
-   assert.equal(chipInventoryTotal(s.potChips),s.pot);
+   assert.equal(chipInventoryTotal(s.potChips)+s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].streetChips),0),s.pot);
  }
  assert.ok(s.result);
  assert.equal(s.order.reduce((total,p)=>total+chipInventoryTotal(s.players[p].chips),0),3000);
  const next=nextHand(s);
  assert.equal(next.handNumber,2);
  assert.equal(chipInventoryTotal(next.startingChips),chipInventoryTotal(DEFAULT_STARTING_CHIPS));
+});
+
+test('human explicitly changes chips for a call and those exact chips stay in street bet',()=>{
+ let s=newMatch(1,{500:0,100:10,25:0,5:0,1:0});
+ // Blinds require a visible dealer exchange, but future human exchanges are explicit.
+ const wanted=amountToCall(s,'hero');
+ if(!canPayChips(s.players.hero.chips,wanted)){
+   const before=chipInventoryTotal(s.players.hero.chips);
+   const original=s;
+   const ignored=act(s,'hero',{kind:'call'});
+   assert.equal(ignored,original,'call without required denominations must be blocked');
+   s=exchangeForBet(s,'hero',wanted);
+   assert.equal(chipInventoryTotal(s.players.hero.chips),before);
+ }
+ const next=act(s,'hero',{kind:'call'});
+ assert.notEqual(next,s);
+ assert.equal(next.players.hero.streetBet,20);
+ assert.equal(chipInventoryTotal(next.players.hero.streetChips),20);
+ assert.equal(chipInventoryTotal(next.potChips)+next.order.reduce((total,id)=>total+chipInventoryTotal(next.players[id].streetChips),0),next.pot);
 });
