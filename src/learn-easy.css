@@ -1,0 +1,166 @@
+/* POCKET LEARN 2.2: genuinely progressive, mobile-first lesson and lab layout.
+   Intentionally isolated from legacy lesson CSS so old poker tables are unaffected. */
+.easy-study{max-width:680px;margin:auto;min-height:100dvh;padding:12px 14px 110px}
+.easy-study .study-header{height:47px;margin-bottom:10px}
+.easy-study .progress-track{height:5px;margin:0 0 23px;background:#37444F}
+.easy-study .progress-track>span{background:#C5D8CB;transition:width .25s ease}
+.easy-study-main{display:flex;flex-direction:column;gap:16px}
+.easy-spot-lead{display:grid;gap:10px}
+.easy-spot-lead h1{font:700 clamp(22px,5.5vw,29px)/1.19 'Space Grotesk','Manrope',sans-serif;letter-spacing:-.05em;color:#F4F5F0}
+.easy-spot-lead>p{color:#CCD5D9;font-size:13px;line-height:1.55;background:#273440;border:1px solid #475966;border-radius:13px;padding:12px 14px}
+.easy-study .scenario-table.easy-spot-table{width:min(calc(100% - 20px),390px)!important;height:auto!important;aspect-ratio:2 / 1!important;border-radius:46% / 43%!important;margin:8px auto 5px!important;background:radial-gradient(ellipse at center,#246452,#153E33)!important;border:8px solid #455F54;box-shadow:0 0 0 2px #809789,0 8px 17px #0A1417AA}
+.easy-study .easy-spot-table .scenario-board{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);display:flex;gap:4px;justify-content:center;width:94%}
+.easy-study .easy-spot-table .scenario-hand{position:absolute;left:50%;bottom:-8px;top:auto;transform:translateX(-50%);display:flex;gap:5px}
+.easy-study .easy-spot-table .scenario-face{width:clamp(34px,9vw,43px);height:clamp(48px,12vw,61px)}
+.easy-spot-question{font:700 clamp(19px,5vw,23px)/1.25 'Space Grotesk','Manrope',sans-serif;color:#F3F5F1;margin:3px 0 0}
+.easy-spot-answers{display:grid;gap:9px}
+.easy-spot-answers button{min-height:61px;padding:14px 16px!important;background:#283744!important;color:#F3F3EF!important;border:1px solid #536775!important;border-radius:14px;display:flex;align-items:center;justify-content:space-between;text-align:left;font-size:14px!important;line-height:1.5;font-weight:700}
+.easy-spot-answers button:not(:disabled):hover{border-color:#B4C9C5}
+.easy-spot-answers button.correct{background:#344F42!important;border-color:#ACCBB5!important;color:#F5F8F4!important}
+.easy-spot-answers button.incorrect{background:#553E47!important;border-color:#C3949E!important}
+.easy-spot-answers button.dimmed{opacity:.52}
+.easy-study-help{display:grid;gap:8px}
+.easy-help-toggle{display:flex;gap:9px;align-items:center;align-self:start;color:#C7D3DA;border:0;background:transparent;padding:10px 2px;font-size:12px;font-weight:750;text-align:left}
+.easy-hint{border-left:3px solid #9AAFC5;background:#273442;border-radius:0 11px 11px 0;padding:13px 14px;color:#E4E9E9;display:grid;gap:8px}
+.easy-hint strong{font-size:14px}.easy-hint p{font-size:13px;line-height:1.6;color:#CDD8DC}
+.easy-feedback{display:grid;gap:10px;border:1px solid #68847C;background:#2A423C;border-radius:17px;padding:16px}
+.easy-feedback-header{display:flex;flex-direction:column;gap:5px}
+.easy-feedback-header>span{font-size:11px;color:#C8DDCE;font-weight:800;letter-spacing:.09em}
+.easy-feedback-header strong{font:700 20px 'Space Grotesk',sans-serif}
+.easy-feedback>p{font-size:14px;line-height:1.55;color:#EEF3ED}
+.easy-feedback-more{display:flex;gap:6px;align-items:center;align-self:start;border:0;background:transparent;padding:8px 0;color:#D0DDEA;font-size:12px;font-weight:800}
+.easy-feedback-more[aria-expanded=true] svg{transform:rotate(90deg)}
+.easy-feedback-extra{font-size:13px!important;color:#CBDCD7!important;border-top:1px solid #849A8A55;padding-top:11px}
+.easy-next{min-height:53px;width:100%;display:flex;justify-content:center;align-items:center;gap:7px;border-radius:14px}
+.easy-theory-section{border:1px solid #455562;background:#232F39;border-radius:15px;overflow:hidden;margin-top:6px}
+.easy-theory-toggle{width:100%;min-height:71px;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:12px;background:transparent;border:0;padding:14px 15px;color:#EEF1EF}
+.easy-theory-toggle>span{display:grid;gap:6px}
+.easy-theory-toggle strong{font-size:14px}
+.easy-theory-toggle[aria-expanded=true] svg{transform:rotate(90deg)}
+.easy-theory-list{border-top:1px solid #526673;padding:13px;display:grid;gap:13px}
+.easy-theory-list article{background:#2B3A45;border-radius:11px;padding:14px;display:grid;gap:7px}
+.easy-theory-list strong{font-size:14px;color:#E8F0ED}
+.easy-theory-list p{font-size:13px;line-height:1.6;color:#C9D5DA}
+.easy-finish{min-height:65dvh;justify-content:center;gap:15px}
+.easy-finish .finish-mark{display:grid;place-items:center;width:78px;height:78px;background:#33564A;color:#E2EFE5;border-radius:50%;font-size:35px}
+.easy-finish>h1{font:700 33px 'Space Grotesk',sans-serif}
+.easy-finish>p{max-width:365px;font-size:14px;color:#C7D5D5;line-height:1.55}
+.easy-finish>.big-primary,.easy-finish>.ghost-button{min-height:51px;width:100%;max-width:350px}
+
+/* No instant 3-tab equation dashboard. Lab begins as approachable, tappable exercises. */
+.poker-lab.lab-easy-root{max-width:680px;padding:12px 16px calc(114px + env(safe-area-inset-bottom));margin:auto;min-height:100dvh}
+.lab-easy-heading{display:flex;align-items:center;gap:9px;min-height:45px;margin-bottom:24px}
+.lab-easy-heading>.icon-button{flex:none;font-size:20px;width:43px;height:43px;border-radius:11px}
+.lab-easy-heading>strong{flex:1;min-width:0;font-size:13px;color:#E3EDEA}
+.lab-easy-heading>span{font-size:11px;letter-spacing:.08em;color:#BAC8D0;font-weight:800}
+.lab-hub-intro{display:grid;gap:13px;margin-bottom:26px}
+.lab-hub-intro h1{font:700 clamp(26px,6.5vw,35px)/1.12 'Space Grotesk','Manrope',sans-serif;letter-spacing:-.055em;color:#F6F5F1}
+.lab-hub-intro p{font-size:14px;line-height:1.6;color:#BECBD0}
+.lab-hub-grid{display:grid;gap:11px}
+.lab-hub-grid>button{display:flex;align-items:center;gap:15px;min-height:102px;background:#27333D;border:1px solid #526572;color:#F2F4F0;border-radius:17px;padding:14px;text-align:left}
+.lab-hub-grid>button:first-child{background:#304641;border-color:#67847A}
+.lab-hub-grid>button:nth-child(2){background:#303849;border-color:#667289}
+.lab-hub-grid>button>span:nth-child(2){display:grid;gap:4px;flex:1}
+.lab-hub-grid small{font-size:10px;letter-spacing:.09em;color:#BDCDCE;font-weight:850}
+.lab-hub-grid strong{font:700 17px 'Space Grotesk','Manrope',sans-serif}
+.lab-hub-grid em{font-size:12px;font-style:normal;color:#C4D1D5;line-height:1.4}
+.lab-hub-grid>button>b{font-size:22px;font-weight:500;color:#D9E5DF}
+.lab-hub-icon{width:51px;height:58px;border-radius:12px;flex:none;display:grid;place-items:center;background:#F4F2EA;color:#273A32;font:700 19px Georgia,serif;box-shadow:0 3px 8px #0002}
+.lab-hub-icon.odds{background:#C8CEDE;color:#253043;font:700 25px 'Space Grotesk',sans-serif}
+.lab-hub-icon.replay{background:#354A53;border:1px solid #8C9EAC;color:#D4E2E9;font:700 26px 'Manrope',sans-serif}
+.lab-hub-footnote{font-size:12px;color:#AFC0C7;line-height:1.5;margin-top:18px}
+.lab-easy-screen{display:grid;gap:15px}
+.lab-easy-screen>.eyebrow{margin:0;font-size:10px}
+.lab-easy-screen>h1{font:700 clamp(24px,6.5vw,33px)/1.16 'Space Grotesk',sans-serif;letter-spacing:-.05em}
+.lab-easy-lead{font-size:14px;color:#C5D1D6;line-height:1.6;margin:0}
+.lab-easy-progress{height:5px;background:#364552;border-radius:8px;overflow:hidden;margin:0 0 5px}
+.lab-easy-progress>span{display:block;height:100%;background:#B8CEC6;transition:width .15s}
+.lab-easy-felt{border:8px solid #496659;box-shadow:0 0 0 2px #8B9E8E,0 8px 20px #09151277;background:radial-gradient(ellipse at center,#225948,#153E34);border-radius:38% / 30%;min-height:209px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:15px;color:#F1F3EB;text-align:center}
+.lab-easy-felt>span{font-size:12px;color:#E1EAE4;line-height:1.45}
+.lab-pot-art{display:flex;align-items:center;justify-content:center;gap:3px;height:39px}
+.lab-pot-art>span{display:block;height:27px;width:27px;border-radius:50%;border:4px dashed #F2E7D0;background:#B85B65;box-shadow:0 2px 0 #692F41,0 4px 0 #BA6870}
+.lab-pot-art>span:nth-child(even){background:#F0E7D8;border-color:#C8AC86;box-shadow:0 2px 0 #BBA47B,0 4px 0 #EDE6DB}
+.lab-situation-number{display:flex;flex-direction:column;gap:4px;font:700 29px 'Space Grotesk',sans-serif}
+.lab-situation-number small{font:500 11px 'Manrope',sans-serif;color:#D1E1D7}
+.lab-easy-price{font-size:12px;padding:7px 12px;border-radius:12px;background:#183E34;border:1px solid #78938A;color:#DDE9E0}
+.lab-easy-question{font:700 20px 'Space Grotesk',sans-serif;margin:6px 0 0}
+.lab-easy-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lab-easy-choices.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.lab-easy-choices>button{border:1px solid #546879;background:#2D3A46;color:#F2F4F0;border-radius:14px;min-height:67px;padding:10px 8px;font-size:13px;font-weight:800;line-height:1.4}
+.lab-easy-choices>button:nth-child(2){background:#3B5550;border-color:#739589}
+.lab-easy-choices>button.chosen{border-color:#D0E3D5;box-shadow:inset 0 0 0 1px #D0E3D5}
+.lab-easy-choices>button:disabled:not(.chosen){opacity:.62}
+.lab-easy-choices small{display:block;color:#CFD9DD;font-size:11px;font-weight:500;margin-top:5px}
+.lab-easy-feedback{display:grid;gap:11px;border:1px solid #698B7B;background:#2B443E;border-radius:17px;padding:17px}
+.lab-easy-feedback h2{font:700 23px 'Space Grotesk',sans-serif}
+.lab-easy-feedback>p{font-size:14px;line-height:1.6;color:#E6EEE9}
+.lab-easy-feedback .big-primary{min-height:53px;margin-top:8px}
+.lab-easy-mathbar{height:9px;background:#4B6460;border-radius:12px;position:relative;margin-top:5px}
+.lab-easy-mathbar>span{height:100%;background:#B8C4D7;border-radius:12px;display:block}
+.lab-easy-mathbar>i{width:4px;height:19px;border-radius:4px;background:#E8F1EB;position:absolute;top:-5px;transform:translateX(-50%)}
+.lab-easy-mathlegend{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;color:#D8E7E1}
+.lab-easy-details{border-top:1px solid #829E9455;padding-top:10px}
+.lab-easy-details>summary{font-size:12px;font-weight:800;cursor:pointer;color:#DEECE7;padding:9px 0}
+.lab-easy-details>p{font-size:12px;color:#D3DFD9;line-height:1.65;padding:2px 0 8px}
+.lab-easy-expert{background:#222E39;border:1px solid #425561;border-radius:15px;overflow:hidden;margin-top:7px}
+.lab-easy-expert>summary{cursor:pointer;min-height:54px;padding:16px;color:#C6D2D7;font-size:13px;font-weight:700}
+.lab-easy-expert>p{color:#B8C7D0;font-size:12px;padding:0 15px 12px;line-height:1.55}
+.lab-easy-sliders{border-top:1px solid #455662;padding:17px 15px;display:grid;gap:17px}
+.lab-easy-sliders .lab-range input{width:100%;accent-color:#B4C7D8}
+.lab-easy-sliders .lab-range-label{font-size:12px;color:#D9E5E6}
+.lab-easy-toggle{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px}
+.lab-easy-toggle>button{background:#334452;color:#DCE9EA;padding:10px 12px;border:1px solid #637581;border-radius:10px}
+.lab-easy-toggle>button.active{background:#C1D4C9;color:#263A31}
+
+/* Hand comparison, immediate game before card editor */
+.lab-compare-hands{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lab-compare-hands>div{display:grid;justify-items:center;gap:12px;padding:17px 10px;border-radius:17px;background:#283945;border:1px solid #566C75}
+.lab-compare-hands>div>span,.lab-compare-board>span{font-size:11px;letter-spacing:.12em;font-weight:850;color:#CFDADD}
+.lab-compare-cards{display:flex;gap:5px;align-items:center;justify-content:center;flex-wrap:nowrap}
+.lab-compare-cards .lab-card{width:clamp(36px,10vw,47px);height:clamp(51px,14vw,65px);font:700 16px Georgia,serif;border-radius:7px;background:#F9F5EC;color:#2B353E;border:1px solid #FFF;box-shadow:0 3px 6px #0003}
+.lab-compare-cards .lab-card.red{color:#B65361}
+.lab-compare-cards .lab-card.empty{background:#34473F;color:#DDE6DF;border:1px dashed #92ABA1}
+.lab-compare-board{display:grid;gap:15px;justify-items:center;background:radial-gradient(ellipse at center,#255B4B,#19463B);border:7px solid #52685C;border-radius:35% / 30%;min-height:156px;align-content:center;padding:16px 5px;box-shadow:0 0 0 2px #8C9D8F}
+.lab-compare-board .lab-card{width:clamp(32px,9vw,45px);height:clamp(46px,13vw,62px)}
+.lab-easy-edit-toggle{border:0;background:none;color:#C9D6DB;font-size:13px;font-weight:800;min-height:45px;text-align:left;padding:12px 0}
+.lab-picker{max-width:520px;padding:18px;max-height:80dvh;overflow-y:auto}
+.lab-picker .lab-suit-picker button{font-size:22px}
+.lab-picker .lab-rank-picker button{font-size:12px;min-height:43px}
+.lab-easy-felt.replay{min-height:170px;border-radius:34% / 27%}
+.lab-easy-felt.replay .lab-compare-cards .lab-card{width:clamp(30px,8vw,39px);height:clamp(45px,12vw,56px);font-size:13px}
+.lab-easy-felt.replay small{color:#C7D7CE}
+.lab-easy-replay-step{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lab-easy-replay-step strong{font-size:13px}
+.lab-easy-replay-step>span{color:#B5C7CC;font-size:11px}
+.lab-replay-picks{display:flex;gap:7px;overflow:auto}
+.lab-replay-picks button{white-space:nowrap;flex:none;padding:10px 12px;min-height:42px;font-size:12px;border-radius:10px;background:#2A3947;border:1px solid #546877;color:#DDE7E8}
+.lab-replay-picks button.active{background:#BFD2C8;color:#2C4038}
+.lab-replay-me{background:#283741;border:1px solid #536873;padding:12px;border-radius:14px;display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+.lab-replay-me>span{font-size:12px;color:#D0DEE0}
+.lab-replay-me .lab-card{width:30px;height:42px;font-size:11px}
+.lab-replay-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lab-replay-controls button{min-height:51px;border:1px solid #647987;background:#354854;color:#F0F1F0;border-radius:12px;font-weight:800}
+.lab-replay-controls button:disabled{opacity:.4}
+.lab-frame-players{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lab-frame-players>div{background:#283943;border:1px solid #516B75;border-radius:11px;padding:11px;display:grid;gap:7px}
+.lab-frame-players span{font-size:11px;color:#C6D5D9}
+.lab-frame-players .lab-card{width:27px;height:38px;font-size:10px}
+.lab-frame-players .folded{opacity:.55}
+.lab-empty{display:grid;gap:12px;padding:23px 18px;border:1px dashed #5C7580;border-radius:15px;background:#26333C;color:#D9E5E5}
+.lab-empty>p{font-size:13px;color:#BCCBD2;line-height:1.5}
+.lab-empty .ghost-button{min-height:44px}
+@media(max-width:410px){
+ .easy-study{padding-left:13px;padding-right:13px}
+ .poker-lab.lab-easy-root{padding-left:14px;padding-right:14px}
+ .lab-hub-grid>button{gap:11px}
+ .lab-hub-icon{width:46px;height:53px}
+ .lab-hub-grid strong{font-size:15px}
+ .lab-compare-cards .lab-card{width:38px;height:53px}
+ .lab-compare-board .lab-card{width:35px;height:49px}
+ .lab-easy-choices>button{font-size:12px}
+ .lab-replay-me{grid-template-columns:1fr 1fr}
+ .lab-replay-me>span:last-child{grid-column:1 / -1}
+}
+@media(prefers-reduced-motion:reduce){
+ .easy-study .progress-track>span,.lab-easy-progress>span{transition:none}
+}
