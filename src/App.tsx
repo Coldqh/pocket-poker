@@ -21,7 +21,6 @@ const emptyProgress:Progress = {completed:[],attempts:{}};
 const emptySession:Session = {moduleId:null,phase:'theory',index:0,choice:null,correct:0,theoryIndex:0};
 const money = (n:number) => n.toLocaleString('ru-RU');
 const playerCountLabel = (n:number) => `${n} ${n===2?'игрока':'игроков'}`;
-const streetName:Record<string,string> = {preflop:'Префлоп',flop:'Флоп',turn:'Тёрн',river:'Ривер',showdown:'Вскрытие'};
 type ChipSize = 'mini' | 'small' | 'large' | 'bet';
 /** Each denomination is visible as a stacked set of physical-looking discs;
  * the integer badge shows the FULL count, even with a tall stack. */
