@@ -1,9 +1,8 @@
 import {useState} from 'react';
 import type {GameState,HandReplay} from './engine';
-import {chanceToImprove,compareBuiltHands,evaluateBuiltHand,LAB_CARD_OPTIONS,potOddsRequired,simplifiedCallEV} from './lab';
+import {chanceToImprove,compareBuiltHands,evaluateBuiltHand,bestFiveBuiltHand,LAB_CARD_OPTIONS,potOddsRequired,simplifiedCallEV} from './lab';
 
 type Mode='odds'|'cards'|'replay';
-type Guess='call'|'fold';
 const SITUATIONS=[
  {title:'За флешем',pot:120,bet:60,outs:9,draws:1 as const,description:'У тебя почти флеш. Одна карта ещё придёт. Девять карт из оставшихся гарантированно принесут победу.'},
  {title:'Выгодная цена?',pot:100,bet:20,outs:12,draws:1 as const,description:'Соперник поставил немного. Двенадцать карт сделают твою руку победной.'},
@@ -13,8 +12,8 @@ const suits=['♠','♥','♦','♣'] as const;
 const ranks=['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
 const pct=(n:number)=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(n*100)+'%';
 const money=(n:number)=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1}).format(n);
-function LabCard({value,onClick}:{value:string|null;onClick?:()=>void}){
- return <button type="button" className={'lab-card '+(value?.includes('♥')||value?.includes('♦')?'red ':'')+(!value?'empty':'')} onClick={onClick} disabled={!onClick} aria-label={value?'Карта '+value:'Выбрать карту'}>{value??'+'}</button>;
+function LabCard({value,onClick,marked=false}:{value:string|null;onClick?:()=>void;marked?:boolean}){
+ return <button type="button" className={'lab-card '+(value?.includes('♥')||value?.includes('♦')?'red ':'')+(!value?'empty ':'')+(marked?'lab-card-highlight':'')} onClick={onClick} disabled={!onClick} aria-label={value?'Карта '+value:'Выбрать карту'}>{value??'+'}</button>;
 }
 function LabHeading({number,title,onBack}:{number:string;title:string;onBack:()=>void}){
  return <div className="lab-easy-heading"><button className="icon-button" aria-label="Назад к инструментам" onClick={onBack}>←</button><strong>{title}</strong><span>{number} / 03</span></div>;
@@ -23,95 +22,72 @@ function RangeControl({title,value,min,max,step=1,onChange}:{title:string;value:
  return <label className="lab-range"><span className="lab-range-label"><strong>{title}</strong><b>{value}</b></span><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/></label>;
 }
 function OddsLab({onBack}:{onBack:()=>void}){
- const [task,setTask]=useState(0),[guess,setGuess]=useState<Guess|null>(null);
- const [edit,setEdit]=useState(false);
- const situation=SITUATIONS[task];
- const [pot,setPot]=useState(situation.pot),[bet,setBet]=useState(situation.bet),[outs,setOuts]=useState(situation.outs),[draws,setDraws]=useState<1|2>(situation.draws);
- const needed=potOddsRequired(pot,bet);
- const chance=chanceToImprove(outs,draws===1?46:47,draws);
- const correct:Guess=chance>=needed?'call':'fold';
- const ev=simplifiedCallEV(pot,bet,chance);
- const next=()=>{
-   const number=(task+1)%SITUATIONS.length;
-   const upcoming=SITUATIONS[number];
-   setTask(number);setPot(upcoming.pot);setBet(upcoming.bet);setOuts(upcoming.outs);setDraws(upcoming.draws);setGuess(null);setEdit(false);
- };
- return <div className="lab-easy-screen">
-  <LabHeading number="01" title="Ответить или сбросить?" onBack={onBack}/>
-  <div className="lab-easy-progress"><span style={{width:((task+1)/SITUATIONS.length*100)+'%'}}/></div>
-  <span className="eyebrow">ЗАДАЧА {task+1} / {SITUATIONS.length}</span>
-  <h1>{situation.title}</h1><p className="lab-easy-lead">{situation.description}</p>
-  <div className="lab-easy-felt">
-   <span>Банк был {money(pot)}. Соперник ставит {money(bet)}.</span>
-   <div className="lab-pot-art" aria-hidden="true"><span/><span/><span/><span/><span/></div>
-   <div className="lab-situation-number">{money(pot+bet)} <small>в банке сейчас</small></div>
-   <div className="lab-easy-price">Тебе нужно добавить <b>{money(bet)}</b></div>
+ const [task,setTask]=useState(0);
+ const start=SITUATIONS[task];
+ const [pot,setPot]=useState(start.pot),[bet,setBet]=useState(start.bet),[outs,setOuts]=useState(start.outs),[draws,setDraws]=useState<1|2>(start.draws);
+ const chance=chanceToImprove(outs,draws===1?46:47,draws),required=potOddsRequired(pot,bet),ev=simplifiedCallEV(pot,bet,chance);
+ const choose=(index:number)=>{const example=SITUATIONS[index];setTask(index);setPot(example.pot);setBet(example.bet);setOuts(example.outs);setDraws(example.draws);};
+ return <div className="lab-easy-screen lab-wonder-odds">
+  <LabHeading number="02" title="Посмотри на ставки" onBack={onBack}/>
+  <span className="eyebrow">ЭКСПЕРИМЕНТ / ШАНСЫ</span><h1>Когда ставка выгодна?</h1>
+  <p className="lab-easy-lead">Начнём с готового примера. Двигай ставку и наблюдай, как меняется нужный шанс победы.</p>
+  <div className="lab-wonder-presets">{SITUATIONS.map((x,i)=><button key={x.title} className={i===task?'active':''} onClick={()=>choose(i)}>{x.title}</button>)}</div>
+  <div className="lab-easy-felt"><span>Сейчас в банке {money(pot+bet)}</span><div className="lab-pot-art" aria-hidden="true"><span/><span/><span/><span/><span/></div><div className="lab-situation-number">{money(bet)} <small>нужно добавить для колла</small></div></div>
+  <div className="lab-wonder-slider"><RangeControl title="Сколько ставит соперник?" min={5} max={500} step={5} value={bet} onChange={setBet}/></div>
+  <div className="lab-wonder-outcome"><span className="eyebrow">ПОКАЗЫВАЕМ НА ПРИМЕРЕ</span><h2>{chance>=required?'В этой модели колл проходит':'В этой модели лучше сбросить'}</h2>
+   <div className="lab-easy-mathbar"><span style={{width:required*100+'%'}}/><i style={{left:chance*100+'%'}}/></div>
+   <div className="lab-easy-mathlegend"><span>Нужно {pct(required)}</span><span>Есть {pct(chance)}</span></div>
+   <p>Для ответа на ставку нужен шанс победы не ниже <strong>{pct(required)}</strong>. В нашем упрощённом примере выигрыш наступает с вероятностью <strong>{pct(chance)}</strong>.</p>
   </div>
-  <h2 className="lab-easy-question">Что выберешь?</h2>
-  <div className="lab-easy-choices">
-   <button disabled={guess!==null} onClick={()=>setGuess('fold')} className={guess==='fold'?'chosen':''}>Сбросить карты <small>Фолд</small></button>
-   <button disabled={guess!==null} onClick={()=>setGuess('call')} className={guess==='call'?'chosen':''}>Ответить на ставку <small>Колл {money(bet)}</small></button>
-  </div>
-  {guess!==null&&<section className="lab-easy-feedback" aria-live="polite">
-   <span className="eyebrow">{guess===correct?'ТАК И ЕСТЬ':'ВОТ ПОЧЕМУ'}</span>
-   <h2>{correct==='call'?'Здесь ответить выгодно':'Здесь лучше сбросить'}</h2>
-   <p>В этой учебной ситуации ты можешь выиграть примерно с вероятностью <b>{pct(chance)}</b>. Для выгодного колла нужно хотя бы <b>{pct(needed)}</b>.</p>
-   <div className="lab-easy-mathbar"><span style={{width:(needed*100)+'%'}}/><i style={{left:(chance*100)+'%'}}/></div>
-   <div className="lab-easy-mathlegend"><span>Порог: {pct(needed)}</span><span>Твой шанс: {pct(chance)}</span></div>
-   <details className="lab-easy-details"><summary>Почему это работает?</summary><p>Считаем по упрощённым правилам: все указанные карты гарантированно выигрывают, остальные проигрывают. Ничьих и дополнительных ставок нет.{draws===2?' Ты бесплатно увидишь обе следующие карты.':''} Это не оценка эквити настоящей раздачи. Условная прибыль колла по модели: {ev>=0?'+':''}{money(ev)}.</p></details>
-   <button className="big-primary" onClick={next}>Ещё одна ситуация →</button>
-  </section>}
-  <details className="lab-easy-expert" open={edit} onToggle={e=>setEdit(e.currentTarget.open)}><summary>Хочу поменять цифры</summary>
-   <p>Это эксперимент. Меняй условия и смотри, как изменится ответ.</p>
-   <div className="lab-easy-sliders"><RangeControl title="Банк до ставки" min={20} max={1000} step={10} value={pot} onChange={n=>{setPot(n);setGuess(null);}}/><RangeControl title="Ставка" min={5} max={500} step={5} value={bet} onChange={n=>{setBet(n);setGuess(null);}}/><RangeControl title="Выигрышные карты" min={0} max={20} value={outs} onChange={n=>{setOuts(n);setGuess(null);}}/><div className="lab-easy-toggle"><strong>Осталось карт</strong><button className={draws===1?'active':''} onClick={()=>{setDraws(1);setGuess(null);}}>Одна</button><button className={draws===2?'active':''} onClick={()=>{setDraws(2);setGuess(null);}}>Две</button></div></div>
-  </details>
+  <details className="lab-easy-expert"><summary>Хочу понять расчёт и поменять условия</summary><div className="lab-easy-sliders">
+    <p>{start.description} Предполагаем, что каждый указанный аут гарантированно выигрывает, а без него ты проигрываешь. Нет дележа банка и будущих ставок.</p>
+    <RangeControl title="Банк до ставки" value={pot} min={20} max={1000} step={10} onChange={setPot}/>
+    <RangeControl title="Выигрышные карты (ауты)" value={outs} min={0} max={20} onChange={setOuts}/>
+    <div className="lab-easy-toggle"><strong>Осталось карт</strong><button className={draws===1?'active':''} onClick={()=>setDraws(1)}>Одна</button><button className={draws===2?'active':''} onClick={()=>setDraws(2)}>Две</button></div>
+    <p className="lab-wonder-math">Порог: {bet} / ({pot} + {bet} + {bet}) = {pct(required)}. Условное EV колла: {ev>=0?'+':''}{money(ev)}. Вероятность улучшения реальной руки не всегда равна её эквити; модель не заменяет оценку диапазона соперника.</p>
+   </div></details>
  </div>;
 }
 function CardsLab({onBack}:{onBack:()=>void}){
  const [hero,setHero]=useState<(string|null)[]>(['A♠','K♠']);
  const [villain,setVillain]=useState<(string|null)[]>(['Q♥','Q♦']);
  const [board,setBoard]=useState<(string|null)[]>(['2♠','7♠','J♦','9♣','3♥']);
- const [guess,setGuess]=useState<'hero'|'villain'|'tie'|null>(null);
  const [editing,setEditing]=useState(false);
  const [slot,setSlot]=useState<{type:'hero'|'villain'|'board';index:number}|null>(null);
  const [suit,setSuit]=useState<typeof suits[number]>('♠');
  const used=new Set([...hero,...villain,...board].filter((x):x is string=>x!==null));
- const complete=(cards:(string|null)[])=>cards.every(v=>v!==null)?cards as string[]:null;
- const ready=complete(hero)&&complete(villain)&&complete(board);
- const result=ready?compareBuiltHands(complete(hero)!,complete(villain)!,complete(board)!):null;
- const winning=result===null?null:result===0?'tie':result>0?'hero':'villain';
- const heroName=complete(hero)?evaluateBuiltHand(complete(hero)!,board.filter((x):x is string=>x!==null)):null;
- const villainName=complete(villain)?evaluateBuiltHand(complete(villain)!,board.filter((x):x is string=>x!==null)):null;
- const replaceCard=(value:string|null)=>{
+ const complete=(cards:(string|null)[]):string[]|null=>cards.every(v=>v!==null)?cards as string[]:null;
+ const holeHero=complete(hero),holeVillain=complete(villain),fiveBoard=complete(board);
+ const result=holeHero&&holeVillain&&fiveBoard?compareBuiltHands(holeHero,holeVillain,fiveBoard):null;
+ const outcome=result===null?'Добавь все карты, чтобы увидеть итог':result===0?'Банк делится поровну':result>0?'Побеждаешь ты':'Побеждает соперник';
+ const heroName=holeHero?evaluateBuiltHand(holeHero,board.filter((v):v is string=>v!==null)):null;
+ const villainName=holeVillain?evaluateBuiltHand(holeVillain,board.filter((v):v is string=>v!==null)):null;
+ const heroBest=holeHero?bestFiveBuiltHand(holeHero,board.filter((v):v is string=>v!==null))??[]:[];
+ const villainBest=holeVillain?bestFiveBuiltHand(holeVillain,board.filter((v):v is string=>v!==null))??[]:[];
+ const highlight=result!==null?(result===0?[...new Set([...heroBest,...villainBest])]:result>0?heroBest:villainBest):[];
+ const makeCards=(cards:(string|null)[],type:'hero'|'villain'|'board')=>cards.map((value,i)=><LabCard key={type+i} value={value} marked={Boolean(value&&highlight.includes(value))} onClick={editing?()=>setSlot({type,index:i}):undefined}/>);
+ const setCard=(value:string|null)=>{
   if(!slot)return;
-  const change=(cards:(string|null)[])=>cards.map((old,i)=>slot.index===i?value:old);
-  if(slot.type==='hero')setHero(change);
-  else if(slot.type==='villain')setVillain(change);
-  else setBoard(change);
-  setGuess(null);setSlot(null);
+  const swap=(cards:(string|null)[])=>cards.map((old,i)=>i===slot.index?value:old);
+  if(slot.type==='hero')setHero(swap);
+  else if(slot.type==='villain')setVillain(swap);
+  else setBoard(swap);
+  setSlot(null);
  };
- const next=()=>{
+ const shuffle=()=>{
   const arr=[...LAB_CARD_OPTIONS];
   for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
-  setHero(arr.slice(0,2));setVillain(arr.slice(2,4));setBoard(arr.slice(4,9));setGuess(null);
+  setHero(arr.slice(0,2));setVillain(arr.slice(2,4));setBoard(arr.slice(4,9));
  };
- const makeCards=(cards:(string|null)[],type:'hero'|'villain'|'board')=>cards.map((value,i)=><LabCard key={type+i} value={value} onClick={editing?()=>setSlot({type,index:i}):undefined}/>);
- return <div className="lab-easy-screen">
-  <LabHeading number="02" title="Чья рука сильнее?" onBack={onBack}/>
-  <span className="eyebrow">СРАВНИ КАРТЫ</span><h1>Кто заберёт банк?</h1>
-  <p className="lab-easy-lead">Посмотри на карты игроков и пять карт на столе. Выбери победителя.</p>
-  <div className="lab-compare-hands"><div><span>ТЫ</span><div className="lab-compare-cards">{makeCards(hero,'hero')}</div></div><div><span>СОПЕРНИК</span><div className="lab-compare-cards">{makeCards(villain,'villain')}</div></div></div>
-  <div className="lab-compare-board"><span>НА СТОЛЕ</span><div className="lab-compare-cards">{makeCards(board,'board')}</div></div>
-  <div className="lab-easy-choices three">
-   <button disabled={guess!==null||!ready} className={guess==='hero'?'chosen':''} onClick={()=>setGuess('hero')}>Ты</button>
-   <button disabled={guess!==null||!ready} className={guess==='villain'?'chosen':''} onClick={()=>setGuess('villain')}>Соперник</button>
-   <button disabled={guess!==null||!ready} className={guess==='tie'?'chosen':''} onClick={()=>setGuess('tie')}>Ничья</button>
-  </div>
-  {!ready&&<p className="lab-easy-lead">Добавь все карты, чтобы сравнить готовые комбинации.</p>}
-  {guess!==null&&<section className="lab-easy-feedback" aria-live="polite"><span className="eyebrow">{guess===winning?'ПРАВИЛЬНО':'ДАВАЙ РАЗБЕРЁМ'}</span><h2>{winning==='hero'?'Твои карты выигрывают':winning==='villain'?'Выигрывает соперник':'Банк делится поровну'}</h2><p>У тебя: <b>{heroName??'—'}</b>. У соперника: <b>{villainName??'—'}</b>. Сравниваем лучшие пять карт каждого игрока.</p><button className="big-primary" onClick={next}>Другая раздача →</button></section>}
-  <button className="lab-easy-edit-toggle" aria-pressed={editing} onClick={()=>{setEditing(v=>!v);setGuess(null);}}>{editing?'Завершить выбор карт':'Хочу составить свои карты'}</button>
-  {editing&&<p className="lab-easy-lead">Нажми на любую карту, чтобы её заменить. Повторяющиеся карты недоступны.</p>}
-  {slot&&<div className="sheet-scrim lab-picker-scrim" onClick={()=>setSlot(null)}><section className="bottom-sheet lab-picker" role="dialog" aria-modal="true" aria-label="Выбор карты" onClick={e=>e.stopPropagation()}><div className="sheet-head"><h2>Выбери карту</h2><button className="icon-button" onClick={()=>setSlot(null)} aria-label="Закрыть">×</button></div><div className="lab-suit-picker">{suits.map(value=><button key={value} className={suit===value?'active':''} onClick={()=>setSuit(value)}>{value}</button>)}</div><div className="lab-rank-picker">{ranks.map(rank=>{const card=rank+suit;const current=(slot.type==='hero'?hero:slot.type==='villain'?villain:board)[slot.index];return <button key={card} disabled={used.has(card)&&current!==card} onClick={()=>replaceCard(card)} className={suit==='♥'||suit==='♦'?'red':''}>{card}</button>;})}</div><button className="ghost-button" onClick={()=>replaceCard(null)}>Убрать карту</button></section></div>}
+ return <div className="lab-easy-screen lab-wonder-cards">
+  <LabHeading number="01" title="Исследуем комбинации" onBack={onBack}/>
+  <span className="eyebrow">ЭКСПЕРИМЕНТ / КАРТЫ</span><h1>Какая рука сильнее?</h1><p className="lab-easy-lead">Смотри, какие пять карт определили победителя. Подсвеченные карты образуют лучшую комбинацию.</p>
+  <div className="lab-compare-hands"><div><span>ТВОИ КАРТЫ</span><div className="lab-compare-cards">{makeCards(hero,'hero')}</div></div><div><span>СОПЕРНИК</span><div className="lab-compare-cards">{makeCards(villain,'villain')}</div></div></div>
+  <div className="lab-compare-board"><span>КАРТЫ НА СТОЛЕ</span><div className="lab-compare-cards">{makeCards(board,'board')}</div></div>
+  <div className="lab-wonder-outcome" aria-live="polite"><span className="eyebrow">РЕЗУЛЬТАТ</span><h2>{outcome}</h2><p>У тебя: <strong>{heroName??'пока неизвестно'}</strong>. У соперника: <strong>{villainName??'пока неизвестно'}</strong>.</p><p>В Техасском Холдеме выбираются лучшие пять из семи доступных карт.</p></div>
+  <div className="lab-wonder-actions"><button className="big-primary" onClick={shuffle}>Показать другую раздачу ↻</button><button className="ghost-button" onClick={()=>setEditing(v=>!v)}>{editing?'Закончить изменение':'Выбрать свои карты'}</button></div>
+  {editing&&<p className="lab-easy-lead">Нажимай на карты и меняй их. Повторы исключены — в одной колоде каждая карта только одна.</p>}
+  {slot&&<div className="sheet-scrim lab-picker-scrim" onClick={()=>setSlot(null)}><section className="bottom-sheet lab-picker" role="dialog" aria-modal="true" aria-label="Выбор карты" onClick={e=>e.stopPropagation()}><div className="sheet-head"><h2>Выбери карту</h2><button className="icon-button" onClick={()=>setSlot(null)} aria-label="Закрыть">×</button></div><div className="lab-suit-picker">{suits.map(x=><button className={suit===x?'active':''} key={x} onClick={()=>setSuit(x)}>{x}</button>)}</div><div className="lab-rank-picker">{ranks.map(rank=>{const value=rank+suit;const current=(slot.type==='hero'?hero:slot.type==='villain'?villain:board)[slot.index];return <button key={value} disabled={used.has(value)&&value!==current} onClick={()=>setCard(value)} className={suit==='♥'||suit==='♦'?'red':''}>{value}</button>})}</div><button className="ghost-button" onClick={()=>setCard(null)}>Убрать карту</button></section></div>}
  </div>;
 }
 function ReplayLab({game,onBack}:{game:GameState;onBack:()=>void}){
@@ -143,10 +119,10 @@ export default function PokerLab({game,onBack}:{game:GameState;onBack:()=>void})
  if(mode==='replay')return <div className="poker-lab lab-easy-root"><ReplayLab game={game} onBack={()=>setMode(null)}/></div>;
  return <div className="poker-lab lab-easy-root">
   <div className="lab-easy-heading"><button className="icon-button" aria-label="Назад к обучению" onClick={onBack}>←</button><strong>Эксперименты</strong><span>POCKET</span></div>
-  <div className="lab-hub-intro"><span className="eyebrow">ПОПРОБУЙ САМ</span><h1>Покер без сложных формул.</h1><p>Выбери одну из трёх простых игр. Все объяснения появятся после твоего действия.</p></div>
+  <div className="lab-hub-intro"><span className="eyebrow">ПОПРОБУЙ САМ</span><h1>Посмотри, как устроен покер.</h1><p>Меняй карты и ставки и сразу смотри результат. Никаких тестов.</p></div>
   <div className="lab-hub-grid">
-   <button onClick={()=>setMode('cards')}><span className="lab-hub-icon cards">A♠</span><span><small>01 / КАРТЫ</small><strong>Кто выиграл?</strong><em>Сравни две руки и выбери победителя.</em></span><b>→</b></button>
-   <button onClick={()=>setMode('odds')}><span className="lab-hub-icon odds">◉</span><span><small>02 / СТАВКИ</small><strong>Ответить или сбросить?</strong><em>Попробуй решение, а потом посмотри расчёт.</em></span><b>→</b></button>
+   <button onClick={()=>setMode('cards')}><span className="lab-hub-icon cards">A♠</span><span><small>01 / КАРТЫ</small><strong>Комбинации</strong><em>Смотри и меняй карты — подсветим лучшую пятёрку.</em></span><b>→</b></button>
+   <button onClick={()=>setMode('odds')}><span className="lab-hub-icon odds">◉</span><span><small>02 / СТАВКИ</small><strong>Ставки и шансы</strong><em>Двигай ставку и наблюдай, как меняется результат.</em></span><b>→</b></button>
    <button onClick={()=>setMode('replay')}><span className="lab-hub-icon replay">↺</span><span><small>03 / ТВОЯ ИГРА</small><strong>Повторить раздачу</strong><em>Вспомни, что происходило за столом.</em></span><b>→</b></button>
   </div>
   <p className="lab-hub-footnote">Никаких обязательных тестов и оценок. Можно просто экспериментировать.</p>
