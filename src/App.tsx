@@ -85,16 +85,29 @@ function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
 function Header({onChange}:{onChange:(page:Page)=>void}){
   return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">POKER CLUB <span aria-hidden="true">✦</span></span></header>;
 }
-function Home({game,onChange}:{game:GameState;onChange:(page:Page)=>void}){
-  const hasHistory=game.handsFinished>0||game.handNumber>1;
-  return <section className="home-screen glow-home">
-    <div className="glow-home-intro"><div className="glow-eyebrow"><span className="glow-status-dot"/> ТВОЙ ПОКЕР-КЛУБ</div><h1>Маленькая игра.<br/><em>Большой ход.</em></h1><p>Никаких реальных денег. Просто покер.</p></div>
-    <button className="glow-play-card" onClick={()=>onChange('play')} aria-label={hasHistory?'Продолжить покерную игру':'Начать игру в покер'}>
-      <span className="glow-play-topline"><span>♠ TEXAS HOLD’EM</span><span className="glow-play-flag">{game.format==='sitngo'?'SIT & GO':'FREE PLAY'}</span></span>
-      <span className="glow-deck-art" aria-hidden="true"><span className="glow-art-card glow-art-first"><b>A<span>♠</span></b><i>♠</i></span><span className="glow-art-card glow-art-second"><b>K<span>♥</span></b><i>♥</i></span><span className="glow-art-orbit"/></span>
-      <span className="glow-play-bottom"><span className="glow-play-copy"><strong>{hasHistory?'Продолжить игру':'Заходи за стол'}</strong><small>{playerCountLabel(game.opponentCount+1)} · Блайнды {game.smallBlind}/{game.bigBlind} · Раздача {game.handNumber}</small></span><span className="glow-play-arrow"><Icon name="chevron" size={24}/></span></span>
-    </button>
-    <div className="glow-home-footnote"><span className="glow-footnote-icon">✳</span><span>{hasHistory?'Раздача сохранена. Продолжишь с того же места.':'Фишки виртуальные. Стол настраивается перед первой игрой.'}</span></div>
+function Home({game,progress,started,onChange,onPractice}:{game:GameState;progress:Progress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void}){
+  const pick=modules.find(m=>{const attempt=progress.attempts[m.id];return attempt&&attempt.correct<attempt.total;})??modules.find(m=>!progress.completed.includes(m.id))??modules[0];
+  const spot=pick.scenarios[0];
+  const resumable=started&&!game.matchOver;
+  return <section className="home-screen lounge-home">
+    <header className="lounge-intro"><span className="eyebrow">POCKET / THE CLUB</span><h1>Твой ход<span className="soft-period">.</span></h1><p>Пара минут покера — без лишнего шума.</p></header>
+    <div className="lounge-layout">
+      <button className="lounge-play" onClick={()=>onChange('play')}>
+        <span className="lounge-play-top"><span className="lounge-label">01 / PLAY</span><span className="play-status"><span className="pulse-dot"/>{resumable?'Партия сохранена':'Новый стол'}</span></span>
+        <span className="lounge-play-illustration" aria-hidden="true"><span className="lounge-card lounge-card-one"><strong>A</strong><span>♠</span></span><span className="lounge-card lounge-card-two"><strong>J</strong><span>♥</span></span><span className="lounge-orbit"/></span>
+        <span className="lounge-play-footer"><span><strong>{resumable?'Вернуться за стол':'Сыграть партию'}</strong><small>{resumable?playerCountLabel(game.opponentCount+1)+' · '+game.smallBlind+'/'+game.bigBlind+' · рука '+game.handNumber:'Настроить фишки и соперников'}</small></span><span className="lounge-arrow"><Icon name="chevron" size={22}/></span></span>
+      </button>
+      <div className="lounge-secondary">
+        <div className="lounge-section-kicker"><span>02 / LEARN</span><span>{progress.completed.length} из {modules.length} тем</span></div>
+        <button className="lounge-spot" onClick={()=>onPractice(pick.id)}>
+          <span className="spot-kicker">ОДНА СИТУАЦИЯ</span>
+          <strong>{spot.title}</strong>
+          <span className="spot-preview">{spot.hand?.length?spot.hand.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
+          <span className="spot-link">Попробовать <Icon name="chevron" size={17}/></span>
+        </button>
+        <div className="lounge-microstat"><span>Без гонки за сериями.</span><strong>Играй в своём темпе</strong></div>
+      </div>
+    </div>
   </section>;
 }
 const seatCoords:Record<number,{x:number;y:number}[]>={
@@ -409,7 +422,7 @@ export default function App(){
     {page!=='play'&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Споты',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET GLOW 2.0 · виртуальные фишки</small></aside>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&<Header onChange={navigate}/>}
-      {page==='home'?<Home game={game} onChange={navigate}/>:
+      {page==='home'?<Home game={game} progress={progress} started={started} onChange={navigate} onPractice={id=>{setSession({...emptySession,moduleId:id,phase:'practice'});navigate('academy');}}/>:
         page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
         page==='academy'?<Academy profile={profile} setProfile={setProfile} progress={progress} setProgress={setProgress} session={session} setSession={setSession} game={game}/>:
         <Stats game={game} progress={progress} career={career}/>}
