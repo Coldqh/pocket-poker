@@ -351,11 +351,12 @@ function Assessment({profile,onSave,onCancel}:{profile:Profile;onSave:(p:Profile
 function Academy({profile,setProfile,storyProgress,setStoryProgress,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;storyProgress:StoryProgress;setStoryProgress:Dispatch<SetStateAction<StoryProgress>>;game:GameState}){
  const [editing,setEditing]=useState(false);
  const [labOpen,setLabOpen]=useState(false);
+ const [guideOpen,setGuideOpen]=useState(false);
  const selected=storyProgress.activeLesson?getStoryLesson(storyProgress.activeLesson):undefined;
  if(selected)return <section className="academy-screen"><StoryLesson lesson={selected} record={storyProgress.lessons[selected.id]??{scene:0,seen:[]}} onBack={()=>setStoryProgress(p=>closeStory(p))} onVisit={index=>setStoryProgress(p=>visitStoryScene(p,selected.id,index))} onFinish={()=>setStoryProgress(p=>completeStory(p,selected.id,Date.now()))}/></section>;
  if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
  if(editing)return <section className="academy-screen"><Assessment profile={profile} onSave={value=>{setProfile(value);setEditing(false);}} onCancel={()=>setEditing(false)}/></section>;
- return <section className="academy-screen"><AcademyStories progress={storyProgress} onOpen={id=>setStoryProgress(p=>openStory(p,id))} onLab={()=>setLabOpen(true)} onEdit={()=>setEditing(true)}/></section>;
+ return <section className="academy-screen"><><AcademyStories progress={storyProgress} onOpen={id=>setStoryProgress(p=>openStory(p,id))} onLab={()=>setLabOpen(true)} onEdit={()=>setEditing(true)} onGuide={()=>setGuideOpen(true)}/>{guideOpen&&<HandGuide onClose={()=>setGuideOpen(false)}/>}</></section>;
 }
 function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Progress;storyProgress:StoryProgress;career:CareerResult[]}){
   const points=career.reduce((n,x)=>n+x.points,0);
