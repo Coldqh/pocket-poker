@@ -1,0 +1,131 @@
+/* POCKET 2.5 — mobile fit and restored classic table palette.
+   Applied last. Target elements on actual 320-430px mobile layouts, not blanket zoom. */
+
+/* Return to the felt, wooden rail and warm action colors used before GLOW. */
+.game-screen{background:#101713}
+.game-toolbar{background:#101713;border-color:#33433a}
+.street-ribbon{background:#17221d;border-color:#31483b}
+.street-ribbon>span{background:#283e34;color:#bed2c3}
+.street-ribbon>span.current{background:#dfdccd;color:#263c30}
+.street-ribbon>span.passed{background:#345d49;color:#e3efe2}
+.table-stage{background:radial-gradient(ellipse at center,#1d3126,#0f1915 69%,#0a0f0e)}
+.table-felt{
+  background:#14442e url('./assets/felt-texture.svg') center / cover no-repeat;
+  border-color:#4a3020;
+  box-shadow:0 0 0 3px #98734b,0 0 0 6px #171c16,0 18px 26px #0009,inset 0 0 0 3px #254f39,inset 0 0 45px #06170c80;
+}
+.table-felt-inner{border-color:#8abd9b42}
+.table-hero{background:#111d17f3;border-color:#bea479}
+.table-hero.acting{border-color:#e5c589;box-shadow:0 0 0 2px #d7b87855,0 8px 20px #09201590}
+.hero-bankroll strong,.pot-number{color:#f6e5bd}
+.action-dock{background:#121b16;border-color:#3c4c3f}
+.action-caption{color:#d9e5dc}
+.action-caption strong{color:#f1d7a1}
+.action-fold{background:#2b3430;color:#f0efea}
+.action-call,.big-primary{background:#e9e6dc;color:#1b2920;box-shadow:none}
+.action-raise{background:#dfbd85;color:#1b2920}
+.action-change{background:#bcc8c2;color:#1b2920}
+.action-raise:disabled,.action-call:disabled{opacity:.48}
+.big-primary:hover:not(:disabled){background:#f1e6cb}
+
+/* A player summary is two lines plus cards. Full denomination inventory
+   remains accessible via the existing tap-to-inspect sheets. */
+.table-opponent{width:clamp(67px,17.5vw,92px);min-height:0;gap:2px;justify-content:center}
+.table-opponent>strong{color:#edf0e7;font-size:clamp(10px,2.8vw,12px);font-weight:750;text-shadow:0 1px 3px #000b}
+.table-opponent .opponent-bankroll{border:1px solid #67816e88;padding:5px 6px;background:#15271eeb;border-radius:9px;min-height:28px;display:flex;align-items:center;justify-content:center}
+.table-opponent .opponent-stack{font-size:12px;color:#f3e5c1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.table-opponent .opponent-avatar{flex:none}
+.table-hero{width:min(255px,calc(100% - 20px));max-width:calc(100% - 20px);min-width:0;padding:9px 12px;gap:9px;justify-content:space-between}
+.hero-bankroll{min-width:0;max-width:none;flex:1;gap:4px}
+.hero-bankroll>span{font-size:11px;color:#d1d9c9}
+.hero-bankroll>strong{font-size:19px;line-height:1.2;white-space:nowrap;letter-spacing:-.035em}
+.hero-cards{flex:none;gap:5px}
+.hero-cards .card-face{width:42px;height:58px;padding:5px}
+.hero-cards .card-face b{font-size:24px}
+.wager-stack{max-width:none;min-width:30px}
+.wager-total{display:block;background:#16241bdb;border:1px solid #66826c85;color:#fff1d1;font-size:11px;padding:4px 7px;border-radius:9px;line-height:1.2}
+.wager-stack .chip-rack{display:none}
+.table-center{gap:5px}
+.table-center .collected-stack{display:none}
+.table-center .pot-label{font-size:11px}
+.table-center .pot-number{font-size:clamp(20px,6vw,27px);line-height:1.25}
+.community-cards{margin-top:8px;gap:4px}
+.game-hint-open{border:1px solid #8f9e8b;background:#24382c;color:#f4ebd3;border-radius:9px;width:31px;height:31px;min-width:31px;display:grid;place-items:center;font-weight:850;font-size:15px;line-height:1}
+.hint-info-sheet{padding:18px 18px calc(24px + env(safe-area-inset-bottom));display:grid;gap:12px}
+.hint-info-sheet .sheet-head{margin-bottom:4px}
+.hint-info-sheet>strong{font-size:18px;color:#f2e2bc}
+.hint-info-sheet>p{font-size:14px;color:#d6e2d7;line-height:1.55}
+.lounge-guide,.lounge-new-table{width:100%;min-height:48px;border:1px solid #536879;border-radius:13px;background:#26323d;color:#e9efef;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;font-size:13px;font-weight:750;text-align:left;gap:9px}
+.lounge-new-table{background:#2d3e37;border-color:#658070;color:#edf1e8}
+.lounge-guide:hover,.lounge-new-table:hover{border-color:#d6e1d3}
+.lounge-intro p{color:#c5cecc}
+.setup-editor-caption p{color:#c7d2ce}
+.profile-heading>p:empty{display:none}
+.story-academy-heading>p{max-width:390px}
+
+/* Portrait mobile: viewport height belongs to the table *stage*, not its children. */
+@media(max-width:700px){
+  .game-screen{height:100svh;max-height:100svh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .game-toolbar{flex:0 0 48px;height:48px;padding:2px 8px;gap:2px}
+  .game-toolbar .icon-button{flex:0 0 39px;width:39px;height:40px;padding:8px}
+  .game-title{margin-left:1px;gap:2px}
+  .game-title strong{font-size:12px}
+  .game-title span{font-size:11px}
+  .street-ribbon{flex:0 0 27px;height:27px;gap:6px;padding:3px 12px}
+  .street-ribbon>span{height:21px;font-size:10px}
+  .table-stage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden}
+  .table-felt{
+    inset:auto;top:50%;left:50%;right:auto;bottom:auto;
+    transform:translate(-50%,-50%);
+    width:min(calc(100% - 30px),calc((100svh - 188px)*.78));
+    height:auto;max-height:calc(100% - 24px);
+    aspect-ratio:.76;border-width:9px;
+  }
+  .table-opponent{transform:translate(-50%,0);width:clamp(65px,19vw,82px);gap:2px}
+  .opponent-avatar{width:24px;height:24px;font-size:10px}
+  .table-opponent .opponent-bankroll{min-height:27px;padding:4px 5px}
+  .opponent-cards .card-face{width:22px;height:30px}
+  .table-center{top:52%;gap:4px}
+  .table-center .pot-number{font-size:clamp(20px,5.5vw,25px)}
+  .community-cards{margin-top:8px}
+  .community-cards .card-face{width:clamp(32px,9vw,42px);height:clamp(46px,12.5vw,60px)}
+  .table-hero{bottom:2%;padding:8px 11px;max-height:82px}
+  .hero-cards .card-face{width:40px;height:55px}
+  .wager-stack{z-index:4}
+  .wager-total{font-size:10px;padding:3px 6px}
+  .action-dock{flex:0 0 auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));}
+  .action-caption{margin:0 1px 8px;font-size:12px;gap:7px}
+  .action-caption strong{font-size:12px;flex:1;text-align:right}
+  .table-actions{grid-template-columns:1fr 1.25fr 1fr;gap:8px}
+  .table-actions button{min-height:52px;padding:8px 5px;border-radius:13px;font-size:13px;white-space:normal}
+}
+@media(max-width:375px){
+  .game-toolbar .icon-button{flex:0 0 36px;width:36px}
+  .game-title strong{font-size:11px}
+  .game-title span{font-size:10px}
+  .table-felt{width:min(calc(100% - 20px),calc((100svh - 180px)*.76))}
+  .table-opponent{width:64px}
+  .table-opponent>strong{font-size:10px}
+  .table-hero{width:min(225px,calc(100% - 14px));gap:6px;padding:7px 9px}
+  .hero-bankroll>strong{font-size:17px}
+  .hero-cards .card-face{width:34px;height:47px}
+  .community-cards{gap:3px}
+  .community-cards .card-face{width:32px;height:46px}
+  .table-actions{gap:5px}
+  .table-actions button{font-size:12px}
+}
+@media(max-height:680px) and (max-width:700px){
+  .game-toolbar{flex-basis:43px;height:43px}
+  .street-ribbon{flex-basis:24px;height:24px}
+  .table-felt{max-height:calc(100% - 14px);width:min(calc(100% - 22px),calc((100svh - 163px)*.76))}
+  .table-opponent .opponent-avatar{width:21px;height:21px}
+  .table-opponent{gap:1px}
+  .opponent-cards .card-face{width:20px;height:27px}
+  .table-center{top:54%}
+  .table-hero{bottom:1%;padding:6px 9px}
+  .action-dock{padding-top:6px}
+  .table-actions button{min-height:46px}
+}
+@media(prefers-reduced-motion:reduce){
+  .table-stage .chip-flight-real,.fold-flight{display:none}
+}

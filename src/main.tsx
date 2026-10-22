@@ -6,6 +6,7 @@ import './glow.css';
 import './learn-easy.css';
 import './story.css';
 import './hand-guide.css';
+import './mobile-refine.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode><App /></React.StrictMode>

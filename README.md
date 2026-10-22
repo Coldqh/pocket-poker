@@ -126,3 +126,8 @@ Instead of the neon Glow recolor, POCKET now uses a soft graphite/sage/slate edi
 ## POCKET 2.4 — подсказка комбинации и памятка
 
 В Story Mode анимация входящих фишек запускается только при первом формировании банка; дальнейшие изменения ставки обновляют только сумму и не вызывают новые полёты фишек. При явном повторе сцены анимация остаётся доступной. Во время реальной игры кнопка «? » в верхней панели открывает краткую памятку из десяти комбинаций. Переключатель «Подсказка» в нижней панели показывает текущую комбинацию героя и подсвечивает только карты, которые составляют её (без кикеров для пары/двух пар/сета). На префлопе обозначает пару или старшую карту без выдуманной пятёрки; на флопе и позже использует оценку движка для лучших пяти карт. Общая комбинация на борде помечается как общедоступная, без прогноза победы. Переключатель сохраняет состояние локально и по умолчанию выключен. Памятка также открывается в академии.
+
+
+## POCKET 2.5 — Mobile & Copy Quality Pass
+
+Mobile table: compact player stacks and bets, denomination details on tap, hand explanation in a sheet, restored classic green felt with brown rail and warm action buttons. Combination guide is on the home screen. Home distinguishes resuming a saved game from starting a new table; first-time games still open table configuration. Interests questionnaire and promotional tutorial descriptions removed. New `src/mobile-refine.css` is loaded after prior styles for isolated iPhone fixes.
