@@ -98,9 +98,9 @@ function ReplayLab({game,onBack}:{game:GameState;onBack:()=>void}){
  const hero=frame?.players.find(player=>player.id==='hero');
  return <div className="lab-easy-screen">
   <LabHeading number="03" title="Посмотреть раздачу" onBack={onBack}/>
-  <span className="eyebrow">ТВОЯ ИСТОРИЯ</span><h1>Как всё было?</h1>
-  <p className="lab-easy-lead">Листай уже сыгранные раздачи и смотри, как менялись карты и банк.</p>
-  {replays.length===0?<div className="lab-empty"><strong>Пока нет раздач</strong><p>Когда сыграешь первую партию, здесь появятся её ходы.</p><button className="ghost-button" onClick={onBack}>К экспериментам</button></div>:<>
+  <span className="eyebrow">ИСТОРИЯ</span><h1>Запись раздачи</h1>
+  <p className="lab-easy-lead">Выбери раздачу, чтобы посмотреть её по шагам.</p>
+  {replays.length===0?<div className="lab-empty"><strong>Пока нет раздач</strong><p>Когда сыграешь первую партию, здесь появятся её ходы.</p><button className="ghost-button" onClick={onBack}>К лаборатории</button></div>:<>
    <div className="lab-replay-picks" aria-label="Выбор раздачи">{replays.map(item=><button key={item.number} className={replay?.number===item.number?'active':''} onClick={()=>{setNumber(item.number);setIndex(0);}}>Раздача {item.number}</button>)}</div>
    {frame&&<><div className="lab-easy-replay-step"><strong>{frame.label}</strong><span>Шаг {index+1} из {replay.frames.length}</span></div>
     <div className="lab-easy-felt replay"><span>Банк: {money(frame.pot)}</span><div className="lab-compare-cards">{frame.board.map((card,i)=><LabCard key={i} value={card}/>)}</div><small>{frame.street==='preflop'?'Карты стола ещё не открыты':'Общие карты'}</small></div>
@@ -119,12 +119,12 @@ export default function PokerLab({game,onBack}:{game:GameState;onBack:()=>void})
  if(mode==='replay')return <div className="poker-lab lab-easy-root"><ReplayLab game={game} onBack={()=>setMode(null)}/></div>;
  return <div className="poker-lab lab-easy-root">
   <div className="lab-easy-heading"><button className="icon-button" aria-label="Назад к обучению" onClick={onBack}>←</button><strong>Эксперименты</strong><span>POCKET</span></div>
-  <div className="lab-hub-intro"><span className="eyebrow">ПОПРОБУЙ САМ</span><h1>Посмотри, как устроен покер.</h1><p>Меняй карты и ставки и сразу смотри результат. Никаких тестов.</p></div>
+  <div className="lab-hub-intro"><span className="eyebrow">ПРАКТИКА</span><h1>Лаборатория</h1><p>Выбери инструмент.</p></div>
   <div className="lab-hub-grid">
-   <button onClick={()=>setMode('cards')}><span className="lab-hub-icon cards">A♠</span><span><small>01 / КАРТЫ</small><strong>Комбинации</strong><em>Смотри и меняй карты — подсветим лучшую пятёрку.</em></span><b>→</b></button>
-   <button onClick={()=>setMode('odds')}><span className="lab-hub-icon odds">◉</span><span><small>02 / СТАВКИ</small><strong>Ставки и шансы</strong><em>Двигай ставку и наблюдай, как меняется результат.</em></span><b>→</b></button>
-   <button onClick={()=>setMode('replay')}><span className="lab-hub-icon replay">↺</span><span><small>03 / ТВОЯ ИГРА</small><strong>Повторить раздачу</strong><em>Вспомни, что происходило за столом.</em></span><b>→</b></button>
+   <button onClick={()=>setMode('cards')}><span className="lab-hub-icon cards">A♠</span><span><small>01 / КАРТЫ</small><strong>Комбинации</strong><em>Составление и сравнение комбинаций.</em></span><b>→</b></button>
+   <button onClick={()=>setMode('odds')}><span className="lab-hub-icon odds">◉</span><span><small>02 / СТАВКИ</small><strong>Ставки и шансы</strong><em>Расчёт шансов банка при разных ставках.</em></span><b>→</b></button>
+   <button onClick={()=>setMode('replay')}><span className="lab-hub-icon replay">↺</span><span><small>03 / ТВОЯ ИГРА</small><strong>Повторить раздачу</strong><em>Просмотр сохранённых раздач.</em></span><b>→</b></button>
   </div>
-  <p className="lab-hub-footnote">Никаких обязательных тестов и оценок. Можно просто экспериментировать.</p>
+  
  </div>;
 }

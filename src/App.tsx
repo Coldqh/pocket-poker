@@ -79,7 +79,7 @@ function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
   return <nav className="tabbar" aria-label="Основные разделы">{tabs.map(tab=><button key={tab.key} aria-current={page===tab.key?'page':undefined} className={page===tab.key?'active':''} onClick={()=>onChange(tab.key)}><Icon name={tab.icon}/><span>{tab.label}</span></button>)}</nav>;
 }
 function Header({onChange}:{onChange:(page:Page)=>void}){
-  return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">POKER CLUB <span aria-hidden="true">✦</span></span></header>;
+  return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">ПОКЕР · ТРЕНАЖЁР</span></header>;
 }
 function Home({game,progress,started,onChange,onPractice,onNewTable}:{game:GameState;progress:StoryProgress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void;onNewTable:()=>void}){
   const pick=storyLessons.find(m=>progress.lessons[m.id]&&!progress.lessons[m.id].completedAt)??storyLessons.find(m=>!progress.lessons[m.id]?.completedAt)??storyLessons[0];
@@ -87,9 +87,9 @@ function Home({game,progress,started,onChange,onPractice,onNewTable}:{game:GameS
   const resumable=started&&!game.matchOver;
   const [guideOpen,setGuideOpen]=useState(false);
   return <section className="home-screen lounge-home">
-    <header className="lounge-intro"><span className="eyebrow">POCKET / THE CLUB</span><h1>Покер<span className="soft-period">.</span></h1><p>Играть и изучать покер.</p></header>
+    <header className="lounge-intro"><span className="eyebrow">ГЛАВНАЯ</span><h1>Покер<span className="soft-period">.</span></h1><p>Игра, уроки и комбинации.</p></header>
     <div className="lounge-layout">
-      <button className="lounge-play" onClick={()=>onChange('play')}>
+      <button className="lounge-play" onClick={()=>resumable?onChange('play'):onNewTable()}>
         <span className="lounge-play-top"><span className="lounge-label">ИГРА</span><span className="play-status"><span className="pulse-dot"/>{resumable?'Партия сохранена':'Новый стол'}</span></span>
         <span className="lounge-play-illustration" aria-hidden="true"><span className="lounge-card lounge-card-one"><strong>A</strong><span>♠</span></span><span className="lounge-card lounge-card-two"><strong>J</strong><span>♥</span></span><span className="lounge-orbit"/></span>
         <span className="lounge-play-footer"><span><strong>{resumable?'Продолжить игру':'Настроить стол'}</strong><small>{resumable?playerCountLabel(game.opponentCount+1)+' · '+game.smallBlind+'/'+game.bigBlind+' · рука '+game.handNumber:'Настроить фишки и соперников'}</small></span><span className="lounge-arrow"><Icon name="chevron" size={22}/></span></span>
@@ -150,7 +150,7 @@ function TableSetup({defaultSeats,defaultChips,defaultBlind,defaultDifficulty,de
   return <section className="table-setup setup-compact">
     <div className="study-header"><button className="icon-button" onClick={onExit} aria-label="Назад"><Icon name="back"/></button><strong>Собрать стол</strong><span className="small-muted">01 / PLAY</span></div>
     <div className="setup-main">
-      <div className="setup-editor-caption"><h1>Как играем?</h1><p>Пара настроек — и ты за столом.</p></div>
+      <div className="setup-editor-caption"><h1>Настройки стола</h1><p>Выбери режим, соперников и фишки.</p></div>
       <div className="setup-compact-modes" role="group" aria-label="Режим игры">
         <button className={format==='practice'?'active':''} aria-pressed={format==='practice'} onClick={()=>setFormat('practice')}>Свободная игра</button>
         <button className={format==='sitngo'?'active':''} aria-pressed={format==='sitngo'} onClick={()=>setFormat('sitngo')}>Sit & Go</button>
@@ -158,7 +158,7 @@ function TableSetup({defaultSeats,defaultChips,defaultBlind,defaultDifficulty,de
       <div className="setup-compact-row"><span>Соперники</span><div className="setup-seats">{[1,2,3,4,5].map(n=><button key={n} aria-label={`${n} соперников`} aria-pressed={seats===n} className={seats===n?'active':''} onClick={()=>setSeats(n)}>{n}</button>)}</div></div>
       <details className="setup-advanced"><summary><span><strong>Правила и боты</strong><small>Блайнды {blind/2}/{blind} · {difficulty==='easy'?'Легко':difficulty==='normal'?'Обычно':'Сложно'}</small></span><Icon name="chevron" size={19}/></summary>
         <div className="setup-advanced-inner"><div className="setup-compact-row"><span>{format==='sitngo'?'Начальные блайнды':'Блайнды'}</span><div className="setup-rule-grid">{[4,10,20,50].map(n=><button key={n} aria-pressed={blind===n} className={blind===n?'active':''} onClick={()=>setBlind(n)}>{n/2}/{n}</button>)}</div></div>
-        <div className="setup-compact-row"><span>Соперники</span><div className="setup-rule-grid bot-rule-grid">{([['easy','Легко'],['normal','Обычно'],['hard','Сложно']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div></div>
+        <div className="setup-compact-row"><span>Сложность</span><div className="setup-rule-grid bot-rule-grid">{([['easy','Легко'],['normal','Обычно'],['hard','Сложно']] as const).map(([id,title])=><button key={id} className={difficulty===id?'active':''} aria-pressed={difficulty===id} onClick={()=>setDifficulty(id)}>{title}</button>)}</div></div></div>
       </details>
       <div className="setup-stack-summary">
         <div><span>Стартовый стек</span><strong>{money(total)}</strong><small>{matching?.name??'Свой набор'} · 1 / 5 / 25 / 100 / 500</small></div>
@@ -349,7 +349,7 @@ function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Pro
   const completed=modules.filter(m=>progress.completed.includes(m.id));
   const watched=storyLessons.filter(m=>Boolean(storyProgress.lessons[m.id]?.completedAt));
   return <section className="stats-screen lounge-profile">
-    <header className="profile-heading"><span className="eyebrow">PLAYER CARD / 03</span><h1>Моя игра<span className="soft-period">.</span></h1><p></p></header>
+    <header className="profile-heading"><span className="eyebrow">ПРОФИЛЬ</span><h1>Статистика</h1><p></p></header>
     <section className="profile-hero">
       <div className="profile-identity"><span className="profile-monogram">P.</span><span><small>ТЕКУЩИЙ СТЕК</small><strong>{money(game.players.hero.stack)}</strong></span></div>
       <div className="profile-session"><span>Изменение за этот матч</span><strong>{net>=0?'+':''}{money(net)} <small>фишек</small></strong></div>

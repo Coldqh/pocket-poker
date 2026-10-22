@@ -18,7 +18,7 @@ export default function StoryLesson({lesson,record,onBack,onVisit,onFinish}:{les
    <div className="novel-body">
     <div className="novel-visual-shell">
       <LessonVisual scene={scene} previousScene={previousScene} replay={replay}/>
-      <button type="button" className="novel-replay" onClick={()=>{setPreviousScene(null);setReplay(k=>k+1);}} aria-label="Повторить анимацию">↺ <span>Повторить</span></button>
+      <button type="button" className="novel-replay" onClick={()=>{setPreviousScene(null);setReplay(k=>k+1);}} aria-label="Повторить анимацию">↺ <span>Повтор</span></button>
     </div>
     <div className="novel-narration" aria-live="polite" key={scene.id}>
       <span className="novel-kicker">ШАГ {String(index+1).padStart(2,'0')}</span>

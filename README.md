@@ -131,3 +131,8 @@ Instead of the neon Glow recolor, POCKET now uses a soft graphite/sage/slate edi
 ## POCKET 2.5 — Mobile & Copy Quality Pass
 
 Mobile table: compact player stacks and bets, denomination details on tap, hand explanation in a sheet, restored classic green felt with brown rail and warm action buttons. Combination guide is on the home screen. Home distinguishes resuming a saved game from starting a new table; first-time games still open table configuration. Interests questionnaire and promotional tutorial descriptions removed. New `src/mobile-refine.css` is loaded after prior styles for isolated iPhone fixes.
+
+
+## 2.5.1
+
+Fix finished-game entry: Home's primary Start action always opens table configuration unless an active unfinished game exists. Trim remaining promotional copy in home, academy, lab and lesson UI. Restore a descriptive training title and remove misleading automatic-start wording.

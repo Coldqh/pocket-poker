@@ -22,7 +22,7 @@ export default function AcademyStories({progress,onOpen,onLab}:{progress:StoryPr
     const record=progress.lessons[lesson.id],done=Boolean(record?.completedAt);
     return <button className="story-shelf-item" key={lesson.id} onClick={()=>onOpen(lesson.id)}>
      <span className={'story-shelf-index story-shelf-index-'+(i%4)}>{String(i+1).padStart(2,'0')}</span>
-     <span className="story-shelf-copy"><small>{lesson.chapter}</small><strong>{lesson.title}</strong><span>{done?'Пройдено':record?seenCount(progress,lesson.id)+' / '+lesson.scenes.length+' частей':lesson.scenes.length+' сцен · '+lesson.teaser}</span></span>
+     <span className="story-shelf-copy"><small>{lesson.chapter}</small><strong>{lesson.title}</strong><span>{done?'Пройдено':record?seenCount(progress,lesson.id)+' / '+lesson.scenes.length+' частей':lesson.scenes.length+' частей · '+lesson.teaser}</span></span>
      <span className="story-shelf-end">{done?'✓':'→'}</span>
     </button>;
    })}
