@@ -11,16 +11,13 @@ import {describeHand} from './hand-guide';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
 type Page = 'home' | 'play' | 'academy' | 'stats';
-type Profile = { configured: boolean; experience: 'new' | 'some' | 'confident'; known: string[]; focus: string[] };
 type Progress = { completed: string[]; attempts: Record<string, {correct:number; total:number}> };
 type CareerResult = {id:string;place:number;players:number;points:number;completedAt:number};
 const GAME_KEY = 'pocket-v2-game';
-const PROFILE_KEY = 'pocket-v2-profile';
 const PROGRESS_KEY = 'pocket-v2-progress';
 const PAGE_KEY = 'pocket-v3-page';
 const READY_KEY = 'pocket-v6-table-ready';
 const CAREER_KEY = 'pocket-v9-career';
-const emptyProfile:Profile = {configured:false,experience:'new',known:[],focus:[]};
 const emptyProgress:Progress = {completed:[],attempts:{}};
 const money = (n:number) => n.toLocaleString('ru-RU');
 const playerCountLabel = (n:number) => `${n} ${n===2?'игрока':'игроков'}`;
@@ -53,7 +50,6 @@ function loadGame():GameState {
     s.order.every(id=>s.players[id] && Array.isArray(s.players[id].hand) && typeof s.players[id].contributed==='number')) return hydrateGameChips(s);
   return newMatch(1);
 }
-function loadProfile():Profile {const p=load(PROFILE_KEY,emptyProfile);return p && Array.isArray(p.known) && Array.isArray(p.focus)?p:emptyProfile;}
 function loadProgress():Progress {const p=load(PROGRESS_KEY,emptyProgress);return p && Array.isArray(p.completed) && p.attempts?p:emptyProgress;}
 function loadStarted():boolean {return load<boolean>(READY_KEY,false)||!!load<GameState|null>(GAME_KEY,null)?.handsFinished;}
 function loadPage():Page {const p=load<Page>(PAGE_KEY,'home');return ['home','play','academy','stats'].includes(p)?p:'home';}
@@ -85,29 +81,32 @@ function TabBar({page,onChange}:{page:Page;onChange:(page:Page)=>void}){
 function Header({onChange}:{onChange:(page:Page)=>void}){
   return <header className="app-header glow-header"><button className="wordmark" onClick={()=>onChange('home')} aria-label="На главную">pocket<span>.</span></button><span className="glow-brand-mark">POKER CLUB <span aria-hidden="true">✦</span></span></header>;
 }
-function Home({game,progress,started,onChange,onPractice}:{game:GameState;progress:StoryProgress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void}){
+function Home({game,progress,started,onChange,onPractice,onNewTable}:{game:GameState;progress:StoryProgress;started:boolean;onChange:(page:Page)=>void;onPractice:(id:string)=>void;onNewTable:()=>void}){
   const pick=storyLessons.find(m=>progress.lessons[m.id]&&!progress.lessons[m.id].completedAt)??storyLessons.find(m=>!progress.lessons[m.id]?.completedAt)??storyLessons[0];
   const spot=pick.scenes.find(scene=>scene.heroCards?.length)??pick.scenes[0];
   const resumable=started&&!game.matchOver;
+  const [guideOpen,setGuideOpen]=useState(false);
   return <section className="home-screen lounge-home">
-    <header className="lounge-intro"><span className="eyebrow">POCKET / THE CLUB</span><h1>Твой ход<span className="soft-period">.</span></h1><p>Пара минут покера — без лишнего шума.</p></header>
+    <header className="lounge-intro"><span className="eyebrow">POCKET / THE CLUB</span><h1>Покер<span className="soft-period">.</span></h1><p>Играть и изучать покер.</p></header>
     <div className="lounge-layout">
       <button className="lounge-play" onClick={()=>onChange('play')}>
-        <span className="lounge-play-top"><span className="lounge-label">01 / PLAY</span><span className="play-status"><span className="pulse-dot"/>{resumable?'Партия сохранена':'Новый стол'}</span></span>
+        <span className="lounge-play-top"><span className="lounge-label">ИГРА</span><span className="play-status"><span className="pulse-dot"/>{resumable?'Партия сохранена':'Новый стол'}</span></span>
         <span className="lounge-play-illustration" aria-hidden="true"><span className="lounge-card lounge-card-one"><strong>A</strong><span>♠</span></span><span className="lounge-card lounge-card-two"><strong>J</strong><span>♥</span></span><span className="lounge-orbit"/></span>
-        <span className="lounge-play-footer"><span><strong>{resumable?'Вернуться за стол':'Сыграть партию'}</strong><small>{resumable?playerCountLabel(game.opponentCount+1)+' · '+game.smallBlind+'/'+game.bigBlind+' · рука '+game.handNumber:'Настроить фишки и соперников'}</small></span><span className="lounge-arrow"><Icon name="chevron" size={22}/></span></span>
+        <span className="lounge-play-footer"><span><strong>{resumable?'Продолжить игру':'Настроить стол'}</strong><small>{resumable?playerCountLabel(game.opponentCount+1)+' · '+game.smallBlind+'/'+game.bigBlind+' · рука '+game.handNumber:'Настроить фишки и соперников'}</small></span><span className="lounge-arrow"><Icon name="chevron" size={22}/></span></span>
       </button>
       <div className="lounge-secondary">
-        <div className="lounge-section-kicker"><span>02 / LEARN</span><span>{completedStoryCount(progress)} из {storyLessons.length} историй</span></div>
+        <div className="lounge-section-kicker"><span>УРОКИ</span><span>{completedStoryCount(progress)} из {storyLessons.length} уроков</span></div>
         <button className="lounge-spot" onClick={()=>onPractice(pick.id)}>
-          <span className="spot-kicker">КАРТОЧНАЯ ИСТОРИЯ</span>
+          <span className="spot-kicker">УРОК</span>
           <strong>{pick.title}</strong>
           <span className="spot-preview">{spot.heroCards?.length?spot.heroCards.map((card,i)=><span className={card.includes('♥')||card.includes('♦')?'red':''} key={i}>{card}</span>):<span>♣</span>}</span>
-          <span className="spot-link">Смотреть историю <Icon name="chevron" size={17}/></span>
+          <span className="spot-link">Открыть урок <Icon name="chevron" size={17}/></span>
         </button>
-        <div className="lounge-microstat"><span>Без гонки за сериями.</span><strong>Играй в своём темпе</strong></div>
+        <button className="lounge-guide" onClick={()=>setGuideOpen(true)}>Памятка комбинаций <Icon name="chevron" size={17}/></button>
+        {resumable&&<button className="lounge-new-table" onClick={onNewTable}>Новый стол <Icon name="chevron" size={17}/></button>}
       </div>
     </div>
+    {guideOpen&&<HandGuide onClose={()=>setGuideOpen(false)}/>}
   </section>;
 }
 const seatCoords:Record<number,{x:number;y:number}[]>={
@@ -335,24 +334,12 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     </section></div>}
   </section>;
 }
-function Assessment({profile,onSave,onCancel}:{profile:Profile;onSave:(p:Profile)=>void;onCancel?:()=>void}){
-  const [draft,setDraft]=useState<Profile>(profile);
-  const [step,setStep]=useState(0);
-  const toggle=(field:'known'|'focus',id:string)=>setDraft(p=>({...p,[field]:p[field].includes(id)?p[field].filter(x=>x!==id):[...p[field],id]}));
-  return <div className="assessment-screen"><div className="study-header"><button className="icon-button" onClick={step?()=>setStep(0):onCancel??(()=>onSave({...draft,configured:true}))}><Icon name="back"/></button><span>Знакомство · {step+1}/2</span><button className="skip-button" onClick={()=>onSave({...draft,configured:true})}>Пропустить</button></div><div className="progress-track"><span style={{width:`${(step+1)*50}%`}}/></div>
-  {step===0?<><h1>Как давно играешь?</h1><p className="short-description">Это поможет подобрать материалы.</p><div className="assessment-options">{([['new','Пока учусь правилам'],['some','Уже играю'],['confident','Хорошо знаю основы']] as const).map(([value,title])=><button className={draft.experience===value?'selected':''} key={value} onClick={()=>setDraft(p=>({...p,experience:value}))}>{title}<span>{draft.experience===value?'✓':''}</span></button>)}</div></>:
-  <><h1>Что интересно?</h1><p className="short-description">Отметь нужное. Всё остальное тоже будет доступно.</p><div className="topic-choices">{modules.map(m=><div className="topic-choice" key={m.id}><strong>{m.title}</strong><div><button className={draft.known.includes(m.id)?'selected':''} onClick={()=>toggle('known',m.id)}>Знаю</button><button className={draft.focus.includes(m.id)?'selected':''} onClick={()=>toggle('focus',m.id)}>Хочу изучить</button></div></div>)}</div></>}
-  <div className="assessment-bottom"><button className="big-primary" onClick={()=>step===0?setStep(1):onSave({...draft,configured:true})}>{step===0?'Дальше':'Готово'} <Icon name="chevron" size={18}/></button></div></div>;
-}
-function Academy({profile,setProfile,storyProgress,setStoryProgress,game}:{profile:Profile;setProfile:Dispatch<SetStateAction<Profile>>;storyProgress:StoryProgress;setStoryProgress:Dispatch<SetStateAction<StoryProgress>>;game:GameState}){
- const [editing,setEditing]=useState(false);
+function Academy({storyProgress,setStoryProgress,game}:{storyProgress:StoryProgress;setStoryProgress:Dispatch<SetStateAction<StoryProgress>>;game:GameState}){
  const [labOpen,setLabOpen]=useState(false);
- const [guideOpen,setGuideOpen]=useState(false);
  const selected=storyProgress.activeLesson?getStoryLesson(storyProgress.activeLesson):undefined;
  if(selected)return <section className="academy-screen"><StoryLesson lesson={selected} record={storyProgress.lessons[selected.id]??{scene:0,seen:[]}} onBack={()=>setStoryProgress(p=>closeStory(p))} onVisit={index=>setStoryProgress(p=>visitStoryScene(p,selected.id,index))} onFinish={()=>setStoryProgress(p=>completeStory(p,selected.id,Date.now()))}/></section>;
  if(labOpen)return <section className="academy-screen"><PokerLab game={game} onBack={()=>setLabOpen(false)}/></section>;
- if(editing)return <section className="academy-screen"><Assessment profile={profile} onSave={value=>{setProfile(value);setEditing(false);}} onCancel={()=>setEditing(false)}/></section>;
- return <section className="academy-screen"><><AcademyStories progress={storyProgress} onOpen={id=>setStoryProgress(p=>openStory(p,id))} onLab={()=>setLabOpen(true)} onEdit={()=>setEditing(true)} onGuide={()=>setGuideOpen(true)}/>{guideOpen&&<HandGuide onClose={()=>setGuideOpen(false)}/>}</></section>;
+ return <section className="academy-screen"><AcademyStories progress={storyProgress} onOpen={id=>setStoryProgress(p=>openStory(p,id))} onLab={()=>setLabOpen(true)}/></section>;
 }
 function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Progress;storyProgress:StoryProgress;career:CareerResult[]}){
   const points=career.reduce((n,x)=>n+x.points,0);
@@ -362,7 +349,7 @@ function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Pro
   const completed=modules.filter(m=>progress.completed.includes(m.id));
   const watched=storyLessons.filter(m=>Boolean(storyProgress.lessons[m.id]?.completedAt));
   return <section className="stats-screen lounge-profile">
-    <header className="profile-heading"><span className="eyebrow">PLAYER CARD / 03</span><h1>Моя игра<span className="soft-period">.</span></h1><p>Все результаты здесь. Без лишних оценок.</p></header>
+    <header className="profile-heading"><span className="eyebrow">PLAYER CARD / 03</span><h1>Моя игра<span className="soft-period">.</span></h1><p></p></header>
     <section className="profile-hero">
       <div className="profile-identity"><span className="profile-monogram">P.</span><span><small>ТЕКУЩИЙ СТЕК</small><strong>{money(game.players.hero.stack)}</strong></span></div>
       <div className="profile-session"><span>Изменение за этот матч</span><strong>{net>=0?'+':''}{money(net)} <small>фишек</small></strong></div>
@@ -379,7 +366,7 @@ function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Pro
         {career.length>0&&<div className="career-results"><h3>Последние турниры</h3>{career.slice(-5).reverse().map(x=><div key={x.id}><span>{x.place}-е место из {x.players}</span><b>+{x.points}</b></div>)}</div>}</div>
       </details>
       <details className="profile-panel"><summary><span><span className="eyebrow">ИСТОРИИ</span><strong>Просмотренные уроки</strong></span><span>{watched.length} из {storyLessons.length} <Icon name="chevron" size={19}/></span></summary>
-        <div className="profile-panel-content"><div className="completed-list">{watched.map(m=><div key={m.id}><span>{m.title}</span><strong>✓</strong></div>)}{watched.length===0&&<p>Посмотри первую историю — она появится здесь.</p>}</div></div>
+        <div className="profile-panel-content"><div className="completed-list">{watched.map(m=><div key={m.id}><span>{m.title}</span><strong>✓</strong></div>)}{watched.length===0&&<p>После первого урока здесь появится результат.</p>}</div></div>
       </details>
       <details className="profile-panel"><summary><span><span className="eyebrow">АРХИВ</span><strong>Результаты старых упражнений</strong></span><span>{completed.length} тем <Icon name="chevron" size={19}/></span></summary><div className="profile-panel-content"><div className="completed-list">{completed.map(m=><div key={m.id}><span>{m.title}</span><strong>{progress.attempts[m.id]?.correct??0}/{progress.attempts[m.id]?.total??m.scenarios.length}</strong></div>)}{completed.length===0&&<p>Старых результатов пока нет.</p>}</div></div></details>
     </div>
@@ -391,13 +378,11 @@ export default function App(){
   const [started,setStarted]=useState<boolean>(loadStarted);
   const [setupPending,setSetupPending]=useState(false);
   const [saveError,setSaveError]=useState(false);
-  const [profile,setProfile]=useState<Profile>(loadProfile);
   const [progress]=useState<Progress>(loadProgress);
   const [storyProgress,setStoryProgress]=useState<StoryProgress>(()=>hydrateStoryProgress(load<unknown>(STORY_KEY,null)));
   const [career,setCareer]=useState<CareerResult[]>(()=>load<CareerResult[]>(CAREER_KEY,[]));
   const persist=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{setSaveError(true);}};
   useEffect(()=>{persist(GAME_KEY,game);},[game]);
-  useEffect(()=>{persist(PROFILE_KEY,profile);},[profile]);
   useEffect(()=>{persist(STORY_KEY,storyProgress);},[storyProgress]);
   useEffect(()=>{persist(PAGE_KEY,page);},[page]);
   useEffect(()=>{persist(CAREER_KEY,career);},[career]);
@@ -416,12 +401,12 @@ export default function App(){
   const configureTable=()=>{setSetupPending(true);};
     const isStory=page==='academy'&&Boolean(storyProgress.activeLesson);
     return <div className={`app-shell ${page==='play'?'playing':''} ${isStory?'story-playing':''}`}>
-    {page!=='play'&&!isStory&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Истории',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET STORY 2.3 · виртуальные фишки</small></aside>}
+    {page!=='play'&&!isStory&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Уроки',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET · виртуальные фишки</small></aside>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&!isStory&&<Header onChange={navigate}/>}
-      {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}}/>:
+      {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}} onNewTable={()=>{setSetupPending(true);navigate('play');}}/>:
         page==='play'?(started&&!setupPending?<GameTable game={game} setGame={setGame} onExit={()=>navigate('home')} onNewTable={configureTable}/>:<TableSetup defaultSeats={game.opponentCount} defaultChips={game.startingChips} defaultBlind={game.initialBlind} defaultDifficulty={game.botDifficulty} defaultFormat={game.format} onStart={startTable} onExit={()=>{setSetupPending(false);navigate('home');}}/>):
-        page==='academy'?<Academy profile={profile} setProfile={setProfile} storyProgress={storyProgress} setStoryProgress={setStoryProgress} game={game}/>:
+        page==='academy'?<Academy storyProgress={storyProgress} setStoryProgress={setStoryProgress} game={game}/>:
         <Stats game={game} progress={progress} storyProgress={storyProgress} career={career}/>}
     </main>
     {page!=='play'&&!isStory&&<TabBar page={page} onChange={navigate}/>}
