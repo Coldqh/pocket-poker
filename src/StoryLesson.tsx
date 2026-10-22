@@ -18,17 +18,17 @@ export default function StoryLesson({lesson,record,onBack,onVisit,onFinish}:{les
    <div className="novel-body">
     <div className="novel-visual-shell">
       <LessonVisual scene={scene} previousScene={previousScene} replay={replay}/>
-      <button type="button" className="novel-replay" onClick={()=>{setPreviousScene(null);setReplay(k=>k+1);}} aria-label="Повторить анимацию текущей сцены">↺ <span>Повторить</span></button>
+      <button type="button" className="novel-replay" onClick={()=>{setPreviousScene(null);setReplay(k=>k+1);}} aria-label="Повторить анимацию">↺ <span>Повторить</span></button>
     </div>
     <div className="novel-narration" aria-live="polite" key={scene.id}>
-      <span className="novel-kicker">ИСТОРИЯ {String(index+1).padStart(2,'0')}</span>
+      <span className="novel-kicker">ШАГ {String(index+1).padStart(2,'0')}</span>
       <h1>{scene.title}</h1><p>{scene.narration}</p>
       {scene.note&&<div className="novel-note"><button type="button" aria-expanded={showDetail} onClick={()=>setShowDetail(v=>!v)}>{showDetail?'Скрыть подробности':'Показать подробнее'} <span aria-hidden="true">⌄</span></button>{showDetail&&<p>{scene.note}</p>}</div>}
     </div>
    </div>
    <div className="novel-bottom">
     <button className="novel-back" type="button" onClick={()=>step(index-1)} disabled={index===0}>← <span>Назад</span></button>
-    <button className="novel-next" type="button" onClick={()=>last?onFinish():step(index+1)}>{last?'Завершить историю':'Дальше'} <span aria-hidden="true">→</span></button>
+    <button className="novel-next" type="button" onClick={()=>last?onFinish():step(index+1)}>{last?'Завершить урок':'Дальше'} <span aria-hidden="true">→</span></button>
    </div>
  </div>;
 }
