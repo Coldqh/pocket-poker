@@ -230,11 +230,11 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
       targets.forEach(id=>add({x:50,y:48},coord(id),'award'));
     } else if(game.street!==previous.street && game.pot>0){
       previous.order.forEach(id=>{
-        if(previous.players[id].streetBet>0)add(betPosition(coord(id),stageSize.width),{x:50,y:44},'collect');
+        if(previous.players[id].streetBet>0)add(betPosition(coord(id),stageSize.width,stageSize.height),{x:50,y:44},'collect');
       });
     } else if(game.pot>previous.pot){
       game.order.forEach(id=>{
-        if(game.players[id].streetBet>previous.players[id].streetBet)add(coord(id),betPosition(coord(id),stageSize.width),'bet');
+        if(game.players[id].streetBet>previous.players[id].streetBet)add(coord(id),betPosition(coord(id),stageSize.width,stageSize.height),'bet');
       });
     }
     if(motions.length)setFlights(motions);
@@ -296,7 +296,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
         const player=game.players[id];
         if(player.streetBet<=0||game.result)return null;
         const coords= id==='hero'?{x:50,y:84}:seats[game.order.filter(v=>v!=='hero').indexOf(id)];
-        const pos=betPosition(coords,stageSize.width);
+        const pos=betPosition(coords,stageSize.width,stageSize.height);
         return <div key={`bet-${id}`} className={`wager-stack wager-${id==='hero'?'hero':'opponent'}`} style={{'--bet-x':`${pos.x}%`,'--bet-y':`${pos.y}%`} as CSSProperties}>
           <ChipRack amount={player.streetBet} groups={inventoryGroups(player.streetChips)} size="bet" maxGroups={3}/>
           <span className="wager-total">{money(player.streetBet)}</span>

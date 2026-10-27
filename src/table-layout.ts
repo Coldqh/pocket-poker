@@ -12,10 +12,10 @@ export function seatLayout(count:number,width:number,height:number):SeatPoint[]{
  if(width>700)return desktop[n][0].map(p=>({...p}));
  return phone[n].map(p=>({x:p.x,y:height<390&&p.y>=30?36:p.y}));
 }
-export function betPosition(p:SeatPoint,width:number):SeatPoint{
+export function betPosition(p:SeatPoint,width:number,height:number):SeatPoint{
  if(width>700)return{x:p.x+(50-p.x)*.37,y:p.y+(53-p.y)*.35};
  if(p.y>=70)return{x:50,y:74};
- if(p.x<=18||p.x>=82)return{x:p.x,y:p.y+12};
- return{x:p.x,y:p.y+22};
+ const offset=height<390?30:25;
+ return{x:p.x,y:p.y+offset};
 }
 export function isCompactStage(width:number,height:number){return width<=700&&height<390;}
