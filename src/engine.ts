@@ -1,3 +1,4 @@
+import {captureDecisionTable,DECISION_HISTORY_VERSION,type DecisionEvent,type DecisionOptions} from './decision-history.ts';
 import { DEFAULT_STARTING_CHIPS, canPayChips, chipInventoryTotal, copyInventory, emptyInventory, exchangeOneChip, inventoryFromAmount, makeChangeForAmount, moveChips, validStartingChips, type ChipInventory, type ChipValue } from './chips.ts';
 export type Suit = '♠' | '♥' | '♦' | '♣';
 export type PlayerId = string;
@@ -13,7 +14,7 @@ export function tournamentBlind(start:number,hand:number):number {
 export function tournamentPoints(place:number):number{return place===1?100:place===2?45:place===3?20:0;}
 export type ReplayPlayer = {id:string;name:string;stack:number;streetBet:number;folded:boolean;cards:string[]};
 export type ReplayFrame = {label:string;street:Street;board:string[];pot:number;players:ReplayPlayer[]};
-export type HandReplay = {number:number;result:string;frames:ReplayFrame[]};
+export type HandReplay = {number:number;result:string;frames:ReplayFrame[];decisions?:DecisionEvent[]};
 export const BOT_STYLES:Record<string,{title:string;desc:string;looseness:number;aggression:number;bluff:number}> = {
   'bot-1':{title:'Тайтовый',desc:'Выбирает сильные руки, редко ввязывается без преимущества',looseness:-.13,aggression:-.08,bluff:.04},
   'bot-2':{title:'Коллирующий',desc:'Часто отвечает на ставки, редко повышает',looseness:.08,aggression:-.21,bluff:.03},
@@ -36,7 +37,7 @@ export type GameState = {
   smallBlind:number;bigBlind:number;botDifficulty:BotDifficulty;
   format:GameFormat;initialBlind:number;eliminated:PlayerId[];heroPlace:number|null;tournamentId:string;tournamentAward:number;
   handStartingStacks:Record<PlayerId,number>;lastPot:number;lastPayouts:Record<PlayerId,number>;
-  replayFrames:ReplayFrame[];replayArchive:HandReplay[];
+  replayFrames:ReplayFrame[];replayArchive:HandReplay[];decisionEvents:DecisionEvent[];
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
   history: string[]; result: string | null; revealBot: boolean; matchOver: boolean;
@@ -104,7 +105,7 @@ function nextAround(s: GameState, index: number, pred: (id: PlayerId)=>boolean):
 }
 function clone(s: GameState): GameState {
   return {...s, deck:[...s.deck], board:[...s.board], order:[...s.order], potChips:copyInventory(s.potChips),startingChips:copyInventory(s.startingChips),
-    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],eliminated:[...s.eliminated],handStartingStacks:{...s.handStartingStacks},lastPayouts:{...s.lastPayouts},replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive};
+    players:Object.fromEntries(s.order.map(id => [id, {...s.players[id],chips:copyInventory(s.players[id].chips),streetChips:copyInventory(s.players[id].streetChips),hand:[...s.players[id].hand]}])), history:[...s.history],eliminated:[...s.eliminated],handStartingStacks:{...s.handStartingStacks},lastPayouts:{...s.lastPayouts},replayFrames:s.replayFrames.map(frame=>({...frame,board:[...frame.board],players:frame.players.map(p=>({...p,cards:[...p.cards]}))})),replayArchive:s.replayArchive,decisionEvents:[...(s.decisionEvents??[])]};
 }
 function log(s:GameState, text:string) { s.history = [text, ...s.history].slice(0,40); }
 function snapshot(s:GameState,label:string){
@@ -152,7 +153,7 @@ function currentInHand(s:GameState) {return s.order.filter(id=>s.players[id].han
 function beginHand(players:Record<PlayerId,Player>,order:PlayerId[],buttonIndex:number,handNumber:number,handsFinished:number,heroWins:number,ties:number,startingChips:ChipInventory,bigBlind:number,botDifficulty:BotDifficulty,archive:HandReplay[],format:GameFormat='practice',initialBlind=bigBlind,eliminated:PlayerId[]=[],tournamentId=''):GameState {
   const s:GameState={deck:shuffledDeck(),board:[],players:Object.fromEntries(order.map(id=>[id,{...players[id],chips:copyInventory(players[id].chips),streetChips:emptyInventory(),hand:[],streetBet:0,contributed:0,acted:false,folded:false,raiseLocked:false}])),
     order,opponentCount:order.length-1,pot:0,potChips:emptyInventory(),startingChips:copyInventory(startingChips),smallBlind:bigBlind/2,bigBlind,botDifficulty,format,initialBlind,eliminated:[...eliminated],heroPlace:null,tournamentId,tournamentAward:0,
-    handStartingStacks:Object.fromEntries(order.map(id=>[id,players[id].stack])),lastPot:0,lastPayouts:{},replayFrames:[],replayArchive:archive,currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
+    handStartingStacks:Object.fromEntries(order.map(id=>[id,players[id].stack])),lastPot:0,lastPayouts:{},replayFrames:[],replayArchive:archive,decisionEvents:[],currentBet:0,minRaise:bigBlind,actor:null,button:order[buttonIndex],buttonIndex,
     street:'preflop',handNumber,handsFinished,heroWins,ties,history:[],result:null,revealBot:false,matchOver:false};
   const seated=order.filter(id=>s.players[id].stack>0);
   if(seated.length<2 || s.players.hero.stack===0) {s.matchOver=true;s.result='Матч завершён.';s.street='showdown';return s;}
@@ -240,7 +241,7 @@ function finishHand(s:GameState,heroWon:boolean,tie:boolean) {
     }
   }
   snapshot(s,s.result??'Конец раздачи');
-  s.replayArchive=[...s.replayArchive,{number:s.handNumber,result:s.result??'',frames:s.replayFrames}].slice(-25);
+  s.replayArchive=[...s.replayArchive,{number:s.handNumber,result:s.result??'',frames:s.replayFrames,decisions:s.decisionEvents}].slice(-25);
 }
 function showdown(s:GameState) {
   collectStreetChips(s);
@@ -308,30 +309,85 @@ function progress(s:GameState,lastActor?:PlayerId) {
   s.actor=nextAround(s,from,id=>canAct(s,id)&&(!s.players[id].acted||s.players[id].streetBet<s.currentBet));
   if(!s.actor)throw new Error('No available action despite an unfinished betting round');
 }
+/** Capture the rule-side options; exact physical chip availability is separate. */
+function actionOptions(s:GameState,id:PlayerId):DecisionOptions{
+  const p=s.players[id];
+  const toCall=amountToCall(s,id);
+  const deficit=Math.max(0,s.currentBet-p.streetBet);
+  const canRaise=maxRaiseTo(s,id)>s.currentBet;
+  const maximum=canRaise?maxRaiseTo(s,id):null;
+  return {
+    toCall,minRaiseTo:canRaise?Math.min(minRaiseTo(s),maximum!):null,maxRaiseTo:maximum,
+    ruleActions: [
+      'fold',deficit>0?'call':'check',
+      ...(canRaise?['raise' as const]:[])
+    ],
+    callRequiresChange:id==='hero'&&toCall>0&&!canPayChips(p.chips,toCall)
+  };
+}
 export function act(original:GameState,id:PlayerId,action:Action):GameState {
   if(original.actor!==id||original.result||!canAct(original,id))return original;
-  const s=clone(original),p=s.players[id];const deficit=Math.max(0,s.currentBet-p.streetBet);
-  if(action.kind==='fold'){
-    p.folded=true;p.acted=true;log(s,`${p.name} · фолд`);snapshot(s,`${p.name} · фолд`);progress(s,id);return s;
-  }
+  if(!['fold','check','call','raise'].includes(action.kind))return original;
+  const originalPlayer=original.players[id];
+  const deficit=Math.max(0,original.currentBet-originalPlayer.streetBet);
   if(action.kind==='check'&&deficit!==0)return original;
-  if(action.kind==='call'){
+  if(action.kind==='call'&&id==='hero'&&!canPayChips(originalPlayer.chips,Math.min(deficit,originalPlayer.stack)))return original;
+  let goal=0;
+  if(action.kind==='raise'){
+    if(!Number.isFinite(action.to)||!Number.isSafeInteger(action.to))return original;
+    goal=action.to!;
+    const max=maxRaiseTo(original,id),min=Math.min(minRaiseTo(original),max);
+    if(goal<=original.currentBet||goal<min||goal>max||max<=original.currentBet)return original;
+    if(id==='hero'&&!canPayChips(originalPlayer.chips,goal-originalPlayer.streetBet))return original;
+  }
+  // Capture what was actually known BEFORE making the decision. This never
+  // includes the undealt deck or the opponent's private hole cards.
+  const before=captureDecisionTable(original);
+  const options=actionOptions(original,id);
+  const s=clone(original),p=s.players[id];
+  if(action.kind==='fold'){
+    p.folded=true;
+    log(s,`${p.name} · фолд`);
+  }else if(action.kind==='call'){
     const paid=Math.min(deficit,p.stack);
-    if(id==='hero'&&!canPayChips(p.chips,paid))return original;
     pay(s,id,paid,id!=='hero');
     log(s,`${p.name} · ${paid?'колл '+paid:'чек'}`);
-  } else if(action.kind==='raise') {
-    const max=maxRaiseTo(s,id);const goal=Math.floor(action.to??0);
-    const min=Math.min(minRaiseTo(s),max);
-    if(goal<=s.currentBet||goal<min||goal>max||max<=s.currentBet)return original;
-    if(id==='hero'&&!canPayChips(p.chips,goal-p.streetBet))return original;
+  }else if(action.kind==='raise'){
     pay(s,id,goal-p.streetBet,id!=='hero');
     const increment=goal-s.currentBet;s.currentBet=goal;
-    if(increment>=s.minRaise){s.minRaise=increment;for(const opp of inHand(s)){if(opp!==id&&s.players[opp].stack>0){s.players[opp].acted=false;s.players[opp].raiseLocked=false;}}}
-    else {for(const opp of inHand(s))if(opp!==id&&s.players[opp].stack>0&&s.players[opp].streetBet<goal){s.players[opp].raiseLocked ||= s.players[opp].acted;s.players[opp].acted=false;}}
+    if(increment>=s.minRaise){
+      s.minRaise=increment;
+      for(const opp of inHand(s))if(opp!==id&&s.players[opp].stack>0){
+        s.players[opp].acted=false;s.players[opp].raiseLocked=false;
+      }
+    }else{
+      for(const opp of inHand(s))if(opp!==id&&s.players[opp].stack>0&&s.players[opp].streetBet<goal){
+        s.players[opp].raiseLocked ||= s.players[opp].acted;s.players[opp].acted=false;
+      }
+    }
     log(s,`${p.name} · рейз до ${goal}`);
-  } else log(s,`${p.name} · чек`);
-  p.acted=true;snapshot(s,s.history[0]);progress(s,id);return s;
+  }else log(s,`${p.name} · чек`);
+  p.acted=true;
+  snapshot(s,s.history[0]);
+  const event:DecisionEvent={
+    version:DECISION_HISTORY_VERSION,
+    handId:`${s.tournamentId}:${s.handNumber}`,
+    handNumber:s.handNumber,sequence:s.decisionEvents.length+1,playerId:id,
+    action:action.kind==='raise'?{kind:'raise',to:goal}:{kind:action.kind},
+    amountCommitted:p.contributed-originalPlayer.contributed,
+    options,before,after:captureDecisionTable(s)
+  };
+  // Append BEFORE progressing: progress() may finish and archive this hand.
+  s.decisionEvents=[...s.decisionEvents,event];
+  progress(s,id);
+  // "after" includes street transitions/payouts, unlike the interim snapshot.
+  const finalEvent:DecisionEvent={...event,after:captureDecisionTable(s)};
+  s.decisionEvents=[...s.decisionEvents.slice(0,-1),finalEvent];
+  if(s.result&&s.replayArchive.at(-1)?.number===s.handNumber){
+    const last=s.replayArchive.at(-1)!;
+    s.replayArchive=[...s.replayArchive.slice(0,-1),{...last,decisions:s.decisionEvents}];
+  }
+  return s;
 }
 // Recreational bots have imperfect information: their own cards + public board only.
 // They are not solvers and their decisions are not instructionally authoritative.
@@ -388,6 +444,8 @@ export function hydrateGameChips(s:GameState):GameState {
   if(!s.lastPayouts)s.lastPayouts={};
   if(!Array.isArray(s.replayFrames))s.replayFrames=[];
   if(!Array.isArray(s.replayArchive))s.replayArchive=[];
+  if(!Array.isArray(s.decisionEvents))s.decisionEvents=[];
+  s.replayArchive=s.replayArchive.filter(h=>h&&Array.isArray(h.frames)).slice(-25).map(h=>({...h,decisions:Array.isArray(h.decisions)?h.decisions:[]}));
   if(!s.startingChips)s.startingChips=inventoryFromAmount(1000);
   if(!s.potChips)s.potChips=inventoryFromAmount(s.pot||0);
   const migratingBets=s.order.some(id=>!s.players[id].streetChips);
