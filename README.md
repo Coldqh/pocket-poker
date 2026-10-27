@@ -144,3 +144,10 @@ The game stage uses actual measured dimensions for seat/bet positions (ResizeObs
 
 
 Playwright CI runs 14 mobile scenarios against both Chromium and WebKit (the engine behind Safari), checking overlap and game restoration. Results from Linux WebKit are not a substitute for hands-on testing on physical iOS Safari.
+
+
+## POCKET 2.6.0 — Decision History Engine
+
+Every *accepted betting decision* (fold, check, call, raise) by any player now creates one versioned factual `DecisionEvent`. The event contains player and hand identifiers, sequence, chosen action and actual contribution, rule-side legal options with exact-chip call constraints, and detached table views **before** the decision and **after** its effects and any dealer transition. The views contain public board, pot, stacks, positions, recent public action descriptions and the hero's own cards; they never contain future deck order or unrevealed opponents' hole cards. The event is appended before completion so the final fold/call is included in the replay archive. Up to 25 completed hands share the existing replay archive retention. Older saves and older replays receive empty decision arrays without losing chips or frames.
+
+This is factual logging, **not** GTO analysis: no EV, strategy grades or invented confidence percentages are created. Blind posting and manual chip exchange remain in the replay/history but are not player *betting decisions*. The user-facing per-decision review interface is planned for 2.7.0 after replay infrastructure 2.6.1.
