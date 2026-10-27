@@ -8,6 +8,7 @@ import AcademyStories from './AcademyStories';
 import PokerLab from './PokerLab';
 import HandGuide from './HandGuide';
 import {describeHand} from './hand-guide';
+import {restoreSavedGame} from './save-state';
 import {seatLayout,betPosition,isCompactStage} from './table-layout';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
@@ -44,12 +45,18 @@ function ChipRack({amount,size='small',maxGroups=5,groups}:{amount:number;size?:
   </div>;
 }
 const load = <T,>(key:string,fallback:T):T => {try {const raw=localStorage.getItem(key);return raw?JSON.parse(raw) as T:fallback;}catch{return fallback;}};
-function loadGame():GameState {
-  const s=load<GameState|null>(GAME_KEY,null);
-  if(s && Array.isArray(s.order) && s.order.length>=2 && s.order.length<=6 && s.order.includes('hero') &&
-    s.players?.hero && Array.isArray(s.deck) && s.opponentCount>=1 && s.opponentCount<=5 &&
-    s.order.every(id=>s.players[id] && Array.isArray(s.players[id].hand) && typeof s.players[id].contributed==='number')) return hydrateGameChips(s);
-  return newMatch(1);
+const CORRUPT_GAME_BACKUP_KEY='pocket-v252-recovered-game';
+type InitialGame={game:GameState;recovery:'none'|'backed-up'|'unavailable'};
+function loadInitialGame():InitialGame{
+ let raw:string|null;
+ try{raw=localStorage.getItem(GAME_KEY);}
+ catch{return {game:newMatch(1),recovery:'unavailable'};}
+ const {game,corrupt}=restoreSavedGame(raw);
+ if(!corrupt)return {game,recovery:'none'};
+ try{
+  if(localStorage.getItem(CORRUPT_GAME_BACKUP_KEY)===null)localStorage.setItem(CORRUPT_GAME_BACKUP_KEY,raw!);
+  return {game,recovery:'backed-up'};
+ }catch{return {game,recovery:'unavailable'};}
 }
 function loadProgress():Progress {const p=load(PROGRESS_KEY,emptyProgress);return p && Array.isArray(p.completed) && p.attempts?p:emptyProgress;}
 function loadStarted():boolean {return load<boolean>(READY_KEY,false)||!!load<GameState|null>(GAME_KEY,null)?.handsFinished;}
@@ -380,15 +387,18 @@ function Stats({game,progress,storyProgress,career}:{game:GameState;progress:Pro
 }
 export default function App(){
   const [page,setPage]=useState<Page>(loadPage);
-  const [game,setGame]=useState<GameState>(loadGame);
-  const [started,setStarted]=useState<boolean>(loadStarted);
+  const [initialGame]=useState<InitialGame>(loadInitialGame);
+  const [game,setGame]=useState<GameState>(initialGame.game);
+  const [started,setStarted]=useState<boolean>(()=>initialGame.recovery==='none'&&loadStarted());
+  const [recoveryNotice,setRecoveryNotice]=useState(initialGame.recovery);
+  const [canPersistGame,setCanPersistGame]=useState(initialGame.recovery!=='unavailable');
   const [setupPending,setSetupPending]=useState(false);
   const [saveError,setSaveError]=useState(false);
   const [progress]=useState<Progress>(loadProgress);
   const [storyProgress,setStoryProgress]=useState<StoryProgress>(()=>hydrateStoryProgress(load<unknown>(STORY_KEY,null)));
   const [career,setCareer]=useState<CareerResult[]>(()=>load<CareerResult[]>(CAREER_KEY,[]));
   const persist=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{setSaveError(true);}};
-  useEffect(()=>{persist(GAME_KEY,game);},[game]);
+  useEffect(()=>{if(canPersistGame)persist(GAME_KEY,game);},[game,canPersistGame]);
   useEffect(()=>{persist(STORY_KEY,storyProgress);},[storyProgress]);
   useEffect(()=>{persist(PAGE_KEY,page);},[page]);
   useEffect(()=>{persist(CAREER_KEY,career);},[career]);
@@ -402,12 +412,14 @@ export default function App(){
   const navigate=(to:Page)=>{setPage(to);window.scrollTo({top:0,behavior:'instant'});};
   const startTable=(seats:number,chips:ChipInventory,blind:number,difficulty:BotDifficulty,format:GameFormat)=>{
     if(started&&!window.confirm('Начать новый стол? Текущий матч будет заменён.'))return;
+    setCanPersistGame(true);setRecoveryNotice('none');
     setGame(newMatch(seats,chips,blind,difficulty,format));setStarted(true);setSetupPending(false);
   };
   const configureTable=()=>{setSetupPending(true);};
     const isStory=page==='academy'&&Boolean(storyProgress.activeLesson);
     return <div className={`app-shell ${page==='play'?'playing':''} ${isStory?'story-playing':''}`}>
     {page!=='play'&&!isStory&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Уроки',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET · виртуальные фишки</small></aside>}
+    {recoveryNotice!=='none'&&<div className="storage-warning" role="alert"><strong>Предыдущее сохранение не удалось открыть.</strong> {recoveryNotice==='backed-up'?'Исходные данные сохранены отдельно в браузере.':'Не удалось создать резервную копию; исходные данные не перезаписываются до создания нового стола.'}</div>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&!isStory&&<Header onChange={navigate}/>}
       {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}} onNewTable={()=>{setSetupPending(true);navigate('play');}}/>:
