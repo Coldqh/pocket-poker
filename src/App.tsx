@@ -221,13 +221,12 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
         setNotice({seq:Date.now(),player:id??'hero',message});
       }
     }
-    const seats=game.order.filter(id=>id!=='hero');
-    const coord=(id:string)=>id==='hero'?{x:50,y:84}:seats[seats.indexOf(id)];
+    const coord=(id:string)=>id==='hero'?{x:50,y:84}:seats[opponents.indexOf(id)];
     const motions:ChipFlight[]=[];
     const add=(from:{x:number;y:number},to:{x:number;y:number},kind:ChipFlight['kind'])=>motions.push({key:`${++motionKey.current}`,from,to,kind});
     if(game.result&&!previous.result&&previous.pot>0){
       const winners=game.order.filter(id=>game.players[id].stack>previous.players[id].stack);
-      const targets=winners.length?winners:[game.result.startsWith('Ты')?'hero':seats[0]];
+      const targets=winners.length?winners:[game.result.startsWith('Ты')?'hero':opponents[0]];
       targets.forEach(id=>add({x:50,y:48},coord(id),'award'));
     } else if(game.street!==previous.street && game.pot>0){
       previous.order.forEach(id=>{
