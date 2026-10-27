@@ -141,3 +141,6 @@ Fix finished-game entry: Home's primary Start action always opens table configur
 ## 2.5.2 — Mobile & Stability
 
 The game stage uses actual measured dimensions for seat/bet positions (ResizeObserver + pure `table-layout.ts`). Small phone tables hide decorative seat avatars instead of clipping the betting controls. `save-state.ts` validates old game saves before hydration; malformed saved JSON is backed up under `pocket-v252-recovered-game` if storage permits, with a visible warning. Source-level tests validate multiple layouts and saved-game migrations; Playwright browser QA verifies mobile game controls and overlap on narrow viewports before deploy. No strategy grades are shown; decision-event logging starts in 2.6.0.
+
+
+Playwright CI runs 14 mobile scenarios against both Chromium and WebKit (the engine behind Safari), checking overlap and game restoration. Results from Linux WebKit are not a substitute for hands-on testing on physical iOS Safari.
