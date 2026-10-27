@@ -8,6 +8,7 @@ import AcademyStories from './AcademyStories';
 import PokerLab from './PokerLab';
 import HandGuide from './HandGuide';
 import {describeHand} from './hand-guide';
+import {seatLayout,betPosition,isCompactStage} from './table-layout';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
 type Page = 'home' | 'play' | 'academy' | 'stats';
@@ -109,16 +110,6 @@ function Home({game,progress,started,onChange,onPractice,onNewTable}:{game:GameS
     {guideOpen&&<HandGuide onClose={()=>setGuideOpen(false)}/>}
   </section>;
 }
-const seatCoords:Record<number,{x:number;y:number}[]>={
-  1:[{x:50,y:8}],
-  2:[{x:27,y:10},{x:73,y:10}],
-  3:[{x:16,y:24},{x:50,y:7},{x:84,y:24}],
-  4:[{x:14,y:27},{x:34,y:7},{x:66,y:7},{x:86,y:27}],
-  5:[{x:12,y:30},{x:25,y:9},{x:50,y:5},{x:75,y:9},{x:88,y:30}]
-};
-function betCoordinates(seat:{x:number;y:number}){
-  return {x:seat.x+(50-seat.x)*.37,y:seat.y+(53-seat.y)*.35};
-}
 function Opponent({game,id,seat,action,onInspect}:{game:GameState;id:string;seat:{x:number;y:number};action?:string;onInspect:(id:string)=>void}){
   const p=game.players[id];const out=p.stack===0&&p.hand.length===0;
   return <div className={`table-opponent ${game.actor===id?'acting':''} ${p.folded||out?'folded':''}`} style={{'--seat-x':`${seat.x}%`,'--seat-y':`${seat.y}%`} as CSSProperties}>
@@ -195,6 +186,22 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
   const [inspected,setInspected]=useState<string|null>(null);
   const motionKey=useRef(0);
   const previousGame=useRef(game);
+  const stageRef=useRef<HTMLDivElement|null>(null);
+  const [stageSize,setStageSize]=useState(()=>({
+    width:typeof window==='undefined'?390:window.innerWidth,
+    height:typeof window==='undefined'?450:Math.max(260,window.innerHeight-190)
+  }));
+  useEffect(()=>{
+    const node=stageRef.current;
+    if(!node||typeof ResizeObserver==='undefined')return;
+    const observer=new ResizeObserver(([entry])=>{
+      const {width,height}=entry.contentRect;
+      setStageSize(prev=>Math.abs(prev.width-width)<1&&Math.abs(prev.height-height)<1?prev:{width,height});
+    });
+    observer.observe(node);
+    return ()=>observer.disconnect();
+  },[]);
+  const seats=useMemo(()=>seatLayout(game.opponentCount,stageSize.width,stageSize.height),[game.opponentCount,stageSize.width,stageSize.height]);
   useEffect(()=>{try{localStorage.setItem('pocket-v4-speed',JSON.stringify(speed));}catch{}},[speed]);
   useEffect(()=>{
     const previous=previousGame.current;
@@ -203,7 +210,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     const opponents=game.order.filter(id=>id!=='hero');
     const folded=game.order.filter(id=>!previous.players[id].folded&&game.players[id].folded&&previous.players[id].hand.length===2);
     if(folded.length)setFoldFlights(items=>[...items,...folded.map(id=>{
-      const coord=id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][opponents.indexOf(id)];
+      const coord=id==='hero'?{x:50,y:84}:seats[opponents.indexOf(id)];
       return {key:++motionKey.current,x:coord.x,y:coord.y};
     })]);
     if(game.history[0]!==previous.history[0]) {
@@ -215,7 +222,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
       }
     }
     const seats=game.order.filter(id=>id!=='hero');
-    const coord=(id:string)=>id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][seats.indexOf(id)];
+    const coord=(id:string)=>id==='hero'?{x:50,y:84}:seats[seats.indexOf(id)];
     const motions:ChipFlight[]=[];
     const add=(from:{x:number;y:number},to:{x:number;y:number},kind:ChipFlight['kind'])=>motions.push({key:`${++motionKey.current}`,from,to,kind});
     if(game.result&&!previous.result&&previous.pot>0){
@@ -224,15 +231,15 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
       targets.forEach(id=>add({x:50,y:48},coord(id),'award'));
     } else if(game.street!==previous.street && game.pot>0){
       previous.order.forEach(id=>{
-        if(previous.players[id].streetBet>0)add(betCoordinates(coord(id)),{x:50,y:44},'collect');
+        if(previous.players[id].streetBet>0)add(betPosition(coord(id),stageSize.width),{x:50,y:44},'collect');
       });
     } else if(game.pot>previous.pot){
       game.order.forEach(id=>{
-        if(game.players[id].streetBet>previous.players[id].streetBet)add(coord(id),betCoordinates(coord(id)),'bet');
+        if(game.players[id].streetBet>previous.players[id].streetBet)add(coord(id),betPosition(coord(id),stageSize.width),'bet');
       });
     }
     if(motions.length)setFlights(motions);
-  },[game]);
+  },[game,seats,stageSize.width]);
   useEffect(()=>{
     if(!flights.length)return;
     const timeout=window.setTimeout(()=>setFlights([]),speed==='fast'?420:880);
@@ -283,14 +290,14 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
       const index=['preflop','flop','turn','river','showdown'].indexOf(game.street);
       return <span key={id} className={index===i?'current':index>i?'passed':''}>{label}</span>;
     })}</div>
-    <div className={`table-stage seats-${game.opponentCount}`}>
+    <div ref={stageRef} className={`table-stage seats-${game.opponentCount} ${isCompactStage(stageSize.width,stageSize.height)?'stage-short':''}`}>
       <div className="table-felt"><div className="table-felt-inner"/><div className="table-grain"/></div>
-      {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seatCoords[game.opponentCount][i]} action={notice?.player===id?notice.message:undefined} onInspect={setInspected}/>)}
+      {game.order.filter(id=>id!=='hero').map((id,i)=><Opponent key={id} game={game} id={id} seat={seats[i]} action={notice?.player===id?notice.message:undefined} onInspect={setInspected}/>)}
       {game.order.map(id=>{
         const player=game.players[id];
         if(player.streetBet<=0||game.result)return null;
-        const coords= id==='hero'?{x:50,y:84}:seatCoords[game.opponentCount][game.order.filter(v=>v!=='hero').indexOf(id)];
-        const pos=betCoordinates(coords);
+        const coords= id==='hero'?{x:50,y:84}:seats[game.order.filter(v=>v!=='hero').indexOf(id)];
+        const pos=betPosition(coords,stageSize.width);
         return <div key={`bet-${id}`} className={`wager-stack wager-${id==='hero'?'hero':'opponent'}`} style={{'--bet-x':`${pos.x}%`,'--bet-y':`${pos.y}%`} as CSSProperties}>
           <ChipRack amount={player.streetBet} groups={inventoryGroups(player.streetChips)} size="bet" maxGroups={3}/>
           <span className="wager-total">{money(player.streetBet)}</span>
