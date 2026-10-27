@@ -136,3 +136,8 @@ Mobile table: compact player stacks and bets, denomination details on tap, hand 
 ## 2.5.1
 
 Fix finished-game entry: Home's primary Start action always opens table configuration unless an active unfinished game exists. Trim remaining promotional copy in home, academy, lab and lesson UI. Restore a descriptive training title and remove misleading automatic-start wording.
+
+
+## 2.5.2 — Mobile & Stability
+
+The game stage uses actual measured dimensions for seat/bet positions (ResizeObserver + pure `table-layout.ts`). Small phone tables hide decorative seat avatars instead of clipping the betting controls. `save-state.ts` validates old game saves before hydration; malformed saved JSON is backed up under `pocket-v252-recovered-game` if storage permits, with a visible warning. Source-level tests validate multiple layouts and saved-game migrations; Playwright browser QA verifies mobile game controls and overlap on narrow viewports before deploy. No strategy grades are shown; decision-event logging starts in 2.6.0.

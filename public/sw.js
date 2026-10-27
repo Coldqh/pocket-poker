@@ -1,4 +1,4 @@
-const CACHE = 'pocket-v251-mobile';
+const CACHE = 'pocket-v252-stability';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['./','./index.html','./manifest.webmanifest','./icon.svg'])).then(()=>self.skipWaiting()));
 });
