@@ -1,0 +1,62 @@
+/* POCKET Replay Engine 2.0: one reader shared by game history and laboratory. */
+.review-root{width:100%;max-width:720px;margin:0 auto;display:grid;gap:14px;font-family:'Manrope',system-ui,sans-serif;color:#eef1eb;padding:2px 0 18px}
+.review-hand-list{display:flex;gap:8px;overflow-x:auto;padding:3px 2px 9px;scroll-snap-type:x mandatory}
+.review-hand-list button{flex:0 0 auto;min-width:83px;background:#283845;color:#dce7e5;border:1px solid #536775;border-radius:12px;padding:10px 11px;min-height:56px;display:grid;gap:4px;text-align:left;font-size:13px;font-weight:750;scroll-snap-align:start}
+.review-hand-list button span{font-weight:500;font-size:10px;color:#b8cad0}
+.review-hand-list button.active{background:#355147;border-color:#a7c4b5;color:#f3f5ec}
+.review-hand-list button.active span{color:#e0e9de}
+.review-step-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.review-step-heading>div{display:grid;gap:5px;min-width:0}
+.review-step-heading>div>span{font-size:11px;font-weight:800;letter-spacing:.1em;color:#bfccc9}
+.review-step-heading>div>strong{font-size:15px;line-height:1.3}
+.review-step-heading>span{flex:none;font-size:11px;color:#bccacb}
+.review-phase-picker{display:grid;grid-template-columns:1fr 1fr;background:#222f38;border:1px solid #55666b;border-radius:13px;padding:4px;gap:5px}
+.review-phase-picker button{min-height:43px;background:transparent;border:0;border-radius:9px;color:#c7d5d5;font-size:13px;font-weight:700}
+.review-phase-picker button.active{background:#cedbd0;color:#28382e}
+.review-content{display:grid;gap:13px}
+.review-felt{border:7px solid #59402b;border-radius:38% / 23%;background:radial-gradient(ellipse at center,#1f6549,#17422f);box-shadow:0 0 0 2px #a88b63,inset 0 0 0 2px #5b856d;min-height:190px;display:grid;justify-items:center;align-content:center;gap:13px;padding:18px 12px;text-align:center}
+.review-felt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;max-width:350px;font-size:11px;color:#e1e9de}
+.review-felt-top strong{font-size:13px;color:#f8edcd}
+.review-board{display:flex;gap:5px;align-items:center;justify-content:center;min-height:55px}
+.review-board-placeholder{font-size:12px;color:#c4d6cc}
+.review-hero-cards{display:grid;justify-items:center;gap:7px;font-size:10px;color:#d5e4da;font-weight:700}
+.review-hero-cards>div{display:flex;gap:7px;min-height:49px}
+.review-card{height:50px;min-width:34px;background:#f8f3e8;color:#29343b;border:1px solid #fff;border-radius:6px;display:grid;place-items:center;padding:4px;font:700 15px Georgia,serif;box-shadow:0 4px 8px #09140c55}
+.review-card.red{color:#ba5661}
+.review-card.back{background:#334a42;border-color:#91b8a2;color:#bcd6c3}
+.review-status{display:grid;gap:10px;padding:15px;border:1px solid #576e72;border-radius:14px;background:#293a42}
+.review-status>strong{font-size:16px;line-height:1.35}
+.review-status>p,.review-action-info{font-size:13px;line-height:1.6;color:#d1dddd}
+.review-phase{font-size:10px;letter-spacing:.13em;font-weight:850;color:#bed1cb}
+.review-summary-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.review-summary-metrics span{padding:10px;border-radius:9px;background:#34464f;color:#c5d5d7;display:grid;gap:3px;font-size:11px}
+.review-summary-metrics b{color:#f0efdb;font-size:16px}
+.review-options{display:grid;gap:6px;border-top:1px solid #50666b;padding-top:9px;color:#cbd9d9;font-size:12px;line-height:1.4}
+.review-player-details{border:1px solid #536875;border-radius:13px;background:#26353e;overflow:hidden}
+.review-player-details summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:750;padding:14px 13px;min-height:46px}
+.review-player-details summary span{color:#bdd0d0;font-size:12px}
+.review-player-list{display:grid;gap:1px;background:#43545c}
+.review-player-list>div{padding:11px;background:#293b45;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.review-player-list>div.folded{opacity:.55}
+.review-player-list>div>span{font-size:12px;color:#edf0e9}
+.review-player-list strong{font-weight:750}
+.review-player-list small{font-size:10px;color:#b9cbd1}
+.review-privacy-note{font-size:11px;line-height:1.55;color:#aebec3}
+.review-navigation{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.review-navigation button{min-height:48px;background:#3c504f;color:#f0eee4;border:1px solid #72918a;border-radius:12px;font-size:13px;font-weight:750}
+.review-navigation button:disabled{opacity:.4}
+.review-timeline{display:flex;flex-wrap:wrap;align-items:center;gap:5px;justify-content:center}
+.review-timeline button{width:17px;height:10px;background:#5b7173;border:0;border-radius:5px;padding:0;min-width:17px}
+.review-timeline button.current{background:#d8c79d;width:29px}
+.review-empty{font-size:13px;line-height:1.6;color:#c7d3d5;padding:18px;background:#26343e;border:1px solid #465a63;border-radius:13px}
+.sheet-scrim .bottom-sheet:has(.review-root){max-height:min(88dvh,920px);overflow-y:auto}
+.lab-easy-screen .review-root{margin-top:4px}
+@media(max-width:400px){
+ .review-root{gap:11px}
+ .review-card{min-width:29px;height:44px;font-size:13px}
+ .review-board{gap:3px}
+ .review-felt{padding:14px 8px;min-height:165px}
+ .review-summary-metrics span{padding:9px}
+ .review-player-list>div{padding:9px}
+}
+@media(prefers-reduced-motion:reduce){.review-root *{scroll-behavior:auto!important}}
