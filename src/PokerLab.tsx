@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import type {GameState,HandReplay} from './engine';
+import type {GameState} from './engine';
+import ReplayReview from './ReplayReview';
 import {chanceToImprove,compareBuiltHands,evaluateBuiltHand,bestFiveBuiltHand,LAB_CARD_OPTIONS,potOddsRequired,simplifiedCallEV} from './lab';
 
 type Mode='odds'|'cards'|'replay';
@@ -91,25 +92,9 @@ function CardsLab({onBack}:{onBack:()=>void}){
  </div>;
 }
 function ReplayLab({game,onBack}:{game:GameState;onBack:()=>void}){
- const replays=[...(game.replayArchive??[])].reverse().filter(item=>item.frames?.length>0);
- const [number,setNumber]=useState<number|null>(null),[index,setIndex]=useState(0);
- const replay:HandReplay|undefined=replays.find(item=>item.number===number)??replays[0];
- const frame=replay?.frames[Math.min(index,replay.frames.length-1)];
- const hero=frame?.players.find(player=>player.id==='hero');
  return <div className="lab-easy-screen">
-  <LabHeading number="03" title="Посмотреть раздачу" onBack={onBack}/>
-  <span className="eyebrow">ИСТОРИЯ</span><h1>Запись раздачи</h1>
-  <p className="lab-easy-lead">Выбери раздачу, чтобы посмотреть её по шагам.</p>
-  {replays.length===0?<div className="lab-empty"><strong>Пока нет раздач</strong><p>Когда сыграешь первую партию, здесь появятся её ходы.</p><button className="ghost-button" onClick={onBack}>К лаборатории</button></div>:<>
-   <div className="lab-replay-picks" aria-label="Выбор раздачи">{replays.map(item=><button key={item.number} className={replay?.number===item.number?'active':''} onClick={()=>{setNumber(item.number);setIndex(0);}}>Раздача {item.number}</button>)}</div>
-   {frame&&<><div className="lab-easy-replay-step"><strong>{frame.label}</strong><span>Шаг {index+1} из {replay.frames.length}</span></div>
-    <div className="lab-easy-felt replay"><span>Банк: {money(frame.pot)}</span><div className="lab-compare-cards">{frame.board.map((card,i)=><LabCard key={i} value={card}/>)}</div><small>{frame.street==='preflop'?'Карты стола ещё не открыты':'Общие карты'}</small></div>
-    <div className="lab-replay-me"><span>Твои карты</span><div className="lab-compare-cards">{hero?.cards.map((card,i)=><LabCard key={i} value={card}/>)}</div><span>Стек {money(hero?.stack??0)}</span></div>
-    <div className="lab-replay-controls"><button disabled={index===0} onClick={()=>setIndex(i=>Math.max(0,i-1))}>← Назад</button><button disabled={index>=replay.frames.length-1} onClick={()=>setIndex(i=>Math.min(replay.frames.length-1,i+1))}>Дальше →</button></div>
-    <details className="lab-easy-details"><summary>Посмотреть всех игроков</summary><div className="lab-frame-players">{frame.players.map(player=><div key={player.id} className={player.folded?'folded':''}><b>{player.name}</b><span>Стек: {money(player.stack)} · ставка: {money(player.streetBet)}{player.folded?' · сбросил':''}</span><div className="lab-replay-cards">{player.cards.map((card,i)=><LabCard key={i} value={card}/>)}</div></div>)}</div></details>
-   </>}
-  </>}
-  <p className="lab-disclaimer">История показывает сохранённые действия, а не оценивает их правильность. Скрытые карты соперников не раскрываются раньше вскрытия.</p>
+   <LabHeading number="03" title="История раздач" onBack={onBack}/>
+   <ReplayReview game={game}/>
  </div>;
 }
 export default function PokerLab({game,onBack}:{game:GameState;onBack:()=>void}){

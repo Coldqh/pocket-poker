@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import type {GameState} from './engine.ts';
 import {cardText} from './engine.ts';
-import {actionLabel,listReplayHands,replaySteps,stepView,streetLabel} from './replay-engine.ts';
+import {listReplayHands,replaySteps,stepView,streetLabel} from './replay-engine.ts';
 import type {ReplayStep} from './replay-engine.ts';
 
 const number=(value:number)=>new Intl.NumberFormat('ru-RU').format(value);

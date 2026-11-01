@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type CSSProperties } from 'react';
-import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, exchangeForBet, exchangePlayerChip, BOT_STYLES, SITNGO_HANDS_PER_LEVEL, type GameFormat, type BotDifficulty, type HandReplay, type Card, type GameState } from './engine';
+import { act, amountToCall, botMove, cardText, maxRaiseTo, minRaiseTo, potFractionRaiseTo, newMatch, nextHand, exchangeForBet, exchangePlayerChip, BOT_STYLES, SITNGO_HANDS_PER_LEVEL, type GameFormat, type BotDifficulty, type Card, type GameState } from './engine';
 import { modules } from './lessons';
 import {storyLessons, getStoryLesson} from './story-lessons';
 import {STORY_KEY, hydrateStoryProgress, openStory, visitStoryScene, completeStory, closeStory, completedStoryCount, type StoryProgress} from './story-progress';
 import StoryLesson from './StoryLesson';
 import AcademyStories from './AcademyStories';
 import PokerLab from './PokerLab';
+import ReplayReview from './ReplayReview';
 import HandGuide from './HandGuide';
 import {describeHand} from './hand-guide';
 import {restoreSavedGame} from './save-state';
@@ -181,8 +182,6 @@ function TableSetup({defaultSeats,defaultChips,defaultBlind,defaultDifficulty,de
 function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Dispatch<SetStateAction<GameState>>;onExit:()=>void;onNewTable:()=>void}){
   const [sheet,setSheet]=useState<'settings'|'history'|null>(null);
   const [hintOpen,setHintOpen]=useState(false);
-  const [replayNumber,setReplayNumber]=useState<number|null>(null);
-  const [replayIndex,setReplayIndex]=useState(0);
   const [raiseOpen,setRaiseOpen]=useState(false);
   const [raise,setRaise]=useState(40);
   const [speed,setSpeed]=useState<'normal'|'fast'>(()=>load<'normal'|'fast'>('pocket-v4-speed','normal')==='fast'?'fast':'normal');
@@ -261,10 +260,6 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     const timer=window.setTimeout(()=>setFoldFlights([]),speed==='fast'?360:780);
     return ()=>window.clearTimeout(timer);
   },[foldFlights,speed]);
-  const archive:HandReplay[]=useMemo(()=>[...((game.replayArchive??[]).filter(x=>x.frames?.length)??[])].reverse(),[game.replayArchive]);
-  const activeReplays:HandReplay[]=game.result?archive:[{number:game.handNumber,result:'Раздача идёт',frames:game.replayFrames??[]},...archive];
-  const replay=activeReplays.find(x=>x.number===replayNumber)??activeReplays[0];
-  const frame=replay?.frames[Math.min(replayIndex,(replay.frames.length||1)-1)];
   const hero=game.players.hero;
   const handHint=useMemo(()=>hero&&!hero.folded?describeHand(hero.hand,game.board):null,[hero,game.board]);
   const hintedCards=new Set(hintOpen&&handHint?handHint.cards:[]);
@@ -291,7 +286,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
   };
   const startNew=()=>{setSheet(null);setRaiseOpen(false);onNewTable();};
   return <section className={`game-screen motion-${speed}`}>
-    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>{game.format==='sitngo'?'SIT & GO':'POCKET TABLE'}</strong><span>{game.smallBlind}/{game.bigBlind} · #{game.handNumber}{game.format==='sitngo'?` · Ур. ${Math.floor((game.handNumber-1)/SITNGO_HANDS_PER_LEVEL)+1}`:''}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>{setReplayNumber(null);setReplayIndex(0);setSheet('history');}}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
+    <div className="game-toolbar"><button aria-label="Вернуться на главную" className="icon-button" onClick={onExit}><Icon name="back"/></button><div className="game-title"><strong>{game.format==='sitngo'?'SIT & GO':'POCKET TABLE'}</strong><span>{game.smallBlind}/{game.bigBlind} · #{game.handNumber}{game.format==='sitngo'?` · Ур. ${Math.floor((game.handNumber-1)/SITNGO_HANDS_PER_LEVEL)+1}`:''}</span></div><button className="icon-button" aria-label="История раздачи" onClick={()=>setSheet('history')}><Icon name="history"/></button><button className="icon-button" aria-label="Настройки стола" onClick={()=>{setSheet('settings');}}><Icon name="settings"/></button></div>
     <div className="street-ribbon" aria-label="Улица раздачи">{([['preflop','Пре'],['flop','Флоп'],['turn','Тёрн'],['river','Ривер']] as const).map(([id,label],i)=>{
       const index=['preflop','flop','turn','river','showdown'].indexOf(game.street);
       return <span key={id} className={index===i?'current':index>i?'passed':''}>{label}</span>;
@@ -343,7 +338,7 @@ function GameTable({game,setGame,onExit,onNewTable}:{game:GameState;setGame:Disp
     {sheet&&<div className="sheet-scrim" onClick={()=>setSheet(null)}><section className="bottom-sheet" onKeyDown={e=>{if(e.key==='Escape')setSheet(null);}} role="dialog" aria-modal="true" aria-label={sheet==='settings'?'Настройки стола':'История раздачи'} onClick={e=>e.stopPropagation()}>
       <div className="sheet-head"><h2>{sheet==='settings'?'Настройки стола':'История раздачи'}</h2><button className="icon-button" autoFocus aria-label="Закрыть" onClick={()=>setSheet(null)}><Icon name="close"/></button></div>
       {sheet==='settings'?<><p className="sheet-hint">Новый матч заменит текущую игру.</p>{game.format==='sitngo'&&<div className="tournament-standings"><strong>Турнир · уровень {Math.floor((game.handNumber-1)/SITNGO_HANDS_PER_LEVEL)+1}</strong><span>{game.order.filter(id=>game.players[id].stack>0).length} из {game.order.length} игроков осталось</span><span>Следующий рост блайндов через {SITNGO_HANDS_PER_LEVEL-((game.handNumber-1)%SITNGO_HANDS_PER_LEVEL)} разд.</span><div>{[...game.order].sort((a,b)=>game.players[b].stack-game.players[a].stack).map((id,i)=><p key={id}>{i+1}. {game.players[id].name}<b>{game.players[id].stack>0?money(game.players[id].stack):'Выбыл'}</b></p>)}</div></div>}<div className="setting-label">Скорость игры</div><div className="speed-picker" role="group" aria-label="Скорость игры"><button aria-pressed={speed==='normal'} className={speed==='normal'?'active':''} onClick={()=>setSpeed('normal')}>Обычная</button><button aria-pressed={speed==='fast'} className={speed==='fast'?'active':''} onClick={()=>setSpeed('fast')}>Быстрая</button></div><p className="sheet-hint">Количество соперников и набор фишек выбираются при создании стола.</p><button className="big-primary" onClick={startNew}>Настроить новый стол</button></>:
-      <div className="replay-browser"><p className="sheet-hint">История последних 25 раздач. Листай действия по одному.</p><div className="replay-hand-list">{activeReplays.map(item=><button key={item.number} onClick={()=>{setReplayNumber(item.number);setReplayIndex(0);}} className={replay?.number===item.number?'active':''}>#{item.number}<small>{item.result||'В процессе'}</small></button>)}</div>{frame?<><div className="replay-counter"><strong>{frame.label}</strong><span>{replayIndex+1} / {replay.frames.length}</span></div><div className="replay-felt"><div className="replay-pot">Банк: <b>{money(frame.pot)}</b></div><div className="replay-board">{frame.board.map((card,i)=><ScenarioFace key={i} value={card}/>)}</div></div><div className="replay-seats">{frame.players.map(p=><div key={p.id} className={p.folded?'replay-folded':''}><strong>{p.name}</strong><span>{money(p.stack)} · ставка {money(p.streetBet)}{p.folded?' · пас':''}</span><div className="replay-cards">{p.cards.map((c,i)=><ScenarioFace value={c} key={i}/>)}</div></div>)}</div><div className="replay-controls"><button disabled={replayIndex===0} onClick={()=>setReplayIndex(n=>Math.max(0,n-1))}><Icon name="back" size={16}/> Назад</button><button disabled={replayIndex>=replay.frames.length-1} onClick={()=>setReplayIndex(n=>Math.min(replay.frames.length-1,n+1))}>Дальше <Icon name="chevron" size={16}/></button></div></>:<p>Истории пока нет. Сыграй первую раздачу.</p>}</div>}
+      <ReplayReview game={game}/>}
     </section></div>}
   </section>;
 }
