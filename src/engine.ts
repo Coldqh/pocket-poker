@@ -38,6 +38,8 @@ export type GameState = {
   format:GameFormat;initialBlind:number;eliminated:PlayerId[];heroPlace:number|null;tournamentId:string;tournamentAward:number;
   handStartingStacks:Record<PlayerId,number>;lastPot:number;lastPayouts:Record<PlayerId,number>;
   replayFrames:ReplayFrame[];replayArchive:HandReplay[];decisionEvents:DecisionEvent[];
+  /** True in compact localStorage snapshots; archive is persisted in IndexedDB. */
+  replayArchiveStored?:boolean;
   actor: PlayerId | null; button: PlayerId; buttonIndex: number; street: Street;
   handNumber: number; handsFinished: number; heroWins: number; ties: number;
   history: string[]; result: string | null; revealBot: boolean; matchOver: boolean;
