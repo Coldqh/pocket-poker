@@ -156,3 +156,8 @@ This is factual logging, **not** GTO analysis: no EV, strategy grades or invente
 ## POCKET 2.6.1 — Replay Engine 2.0
 
 The in-game History panel and learning laboratory now use one responsive `ReplayReview` component. Modern `DecisionEvent` archives are navigable **one decision at a time**, with an explicit **Before / After** switch showing factual pot, public board, stacks, legal actions and the hero's hole cards available at that point. The timeline works for hands in progress as well as completed hands and survives reload. Old replay archives continue to show their old frames without inventing actor-time information. No GTO or EV grades are calculated. `replay-engine.ts` contains pure timeline helpers with unit tests, and Chromium/WebKit runs verify mobile controls and persisted review navigation.
+
+
+### IndexedDB archival migration
+
+Completed hand archives are written to `pocket-replay-archive`/ `hands` (keyed by tournament ID, last 25 hands). Once IndexedDB confirms persistence, the localStorage game snapshot keeps only the three newest completed hands as a crash-safe fallback, reducing quota pressure. On startup the archived hands merge back with newer local fallback hands before the table becomes interactive. If IndexedDB is unavailable, the game keeps its full locally available archive and displays a warning; it never marks an unsupported decision as analysed. Browser tests cover the merge, compacted snapshots and reload. Like localStorage, IndexedDB belongs to the same browser and origin, not a cloud backup.

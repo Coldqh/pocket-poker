@@ -88,3 +88,18 @@ test('same hand before/after states survive JSON persistence',()=>{
  assert.deepEqual(b,a);
  assert.notEqual(stepView(b[0],'before'),stepView(b[0],'after'));
 });
+
+import {mergeReplayArchives} from '../src/replay-storage.ts';
+test('IndexedDB archive merge preserves recent snapshots and deduplicates same hand number',()=>{
+ const old={number:1,result:'previous',frames:[]};
+ const second={number:2,result:'saved',frames:[]};
+ const newer={number:2,result:'newer',frames:[{label:'finish',street:'showdown',pot:0,board:[],players:[]}]};
+ assert.deepEqual(mergeReplayArchives([old,second],[newer]).map(h=>[h.number,h.result]),[[1,'previous'],[2,'newer']]);
+});
+test('IndexedDB archive merge bounds history to most recent 25 hands',()=>{
+ const all=Array.from({length:32},(_,i)=>({number:i+1,result:'',frames:[]}));
+ const result=mergeReplayArchives(all,[]);
+ assert.equal(result.length,25);
+ assert.equal(result[0].number,8);
+ assert.equal(result.at(-1).number,32);
+});
