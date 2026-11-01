@@ -19,7 +19,7 @@ for(const size of [{width:320,height:568},{width:390,height:844}]){
   await page.getByRole('button',{name:'После хода'}).click();
   await expect(page.locator('.review-status')).toContainText('ПОСЛЕ ХОДА');
   await expect(page.locator('.review-status')).toContainText('Внесено в банк: 0');
-  await expect(page.locator('.review-player-list')).toHaveCount(0);
+  await expect(page.locator('.review-player-list')).toBeHidden();
   await page.locator('.review-player-details summary').click();
   await expect(page.locator('.review-player-list>div')).toHaveCount(2);
  });
@@ -33,6 +33,6 @@ test('replay survives reload and is accessible through the laboratory',async({pa
  await expect(page.locator('.review-step-heading')).toContainText('Ты: фолд');
  await page.getByRole('button',{name:'Закрыть',exact:true}).last().click();
  await page.getByRole('button',{name:/На главную/i}).first().click();
- await page.getByRole('button',{name:/Уроки/i}).first().click();
+ await page.getByRole('button',{name:'Истории',exact:true}).first().click();
  await expect(page.locator('.academy-screen')).toBeVisible();
 });
