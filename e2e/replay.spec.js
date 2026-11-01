@@ -39,12 +39,21 @@ test('replay survives reload and is accessible through the laboratory',async({pa
 
 test('IndexedDB archive restores older actions after compacting localStorage',async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await createGame(page);
- for(let i=0;i<4;i++){
-  await expect(page.locator('.action-fold')).toBeEnabled({timeout:10000});
-  await page.locator('.action-fold').click();
-  if(i<3)await page.getByRole('button',{name:/Следующая раздача/}).click();
- }
+ await page.goto('/');
+ // Reproducible REAL engine actions; a bot can otherwise fold before the hero
+ // gets a chance to act, so tapping Fold four times is not a valid test setup.
+ await page.evaluate(async()=>{
+  const engine=await import('/src/engine.ts');
+  let game=engine.newMatch(1);
+  for(let i=0;i<4;i++){
+   game=engine.act(game,game.actor,{kind:'fold'});
+   if(i<3)game=engine.nextHand(game);
+  }
+  localStorage.setItem('pocket-v2-game',JSON.stringify(game));
+  localStorage.setItem('pocket-v6-table-ready','true');
+  localStorage.setItem('pocket-v3-page',JSON.stringify('play'));
+ });
+ await page.reload();
  await expect.poll(()=>page.evaluate(()=>{
   const s=JSON.parse(localStorage.getItem('pocket-v2-game')??'null');
   return !!s?.replayArchiveStored&&s.replayArchive?.length<=3;
