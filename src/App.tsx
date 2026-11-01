@@ -10,6 +10,7 @@ import ReplayReview from './ReplayReview';
 import HandGuide from './HandGuide';
 import {describeHand} from './hand-guide';
 import {restoreSavedGame} from './save-state';
+import {readReplayArchive,writeReplayArchive,mergeReplayArchives} from './replay-storage';
 import {seatLayout,betPosition,isCompactStage} from './table-layout';
 import { breakdownChips, canPayChips, DEFAULT_STARTING_CHIPS, CHIP_DENOMINATIONS, copyInventory, chipInventoryTotal, validStartingChips, inventoryGroups, paymentChipGroups, type ChipInventory, type ChipGroup } from './chips';
 
@@ -383,6 +384,11 @@ export default function App(){
   const [page,setPage]=useState<Page>(loadPage);
   const [initialGame]=useState<InitialGame>(loadInitialGame);
   const [game,setGame]=useState<GameState>(initialGame.game);
+  const [archiveReady,setArchiveReady]=useState(!initialGame.game.replayArchiveStored);
+  const [archiveWarning,setArchiveWarning]=useState(false);
+  const offloadedRef=useRef(Boolean(initialGame.game.replayArchiveStored));
+  const archiveQueue=useRef<Promise<void>>(Promise.resolve());
+  const saveRevision=useRef(0);
   const [started,setStarted]=useState<boolean>(()=>initialGame.recovery==='none'&&loadStarted());
   const [recoveryNotice,setRecoveryNotice]=useState(initialGame.recovery);
   const [canPersistGame,setCanPersistGame]=useState(initialGame.recovery!=='unavailable');
@@ -392,7 +398,43 @@ export default function App(){
   const [storyProgress,setStoryProgress]=useState<StoryProgress>(()=>hydrateStoryProgress(load<unknown>(STORY_KEY,null)));
   const [career,setCareer]=useState<CareerResult[]>(()=>load<CareerResult[]>(CAREER_KEY,[]));
   const persist=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{setSaveError(true);}};
-  useEffect(()=>{if(canPersistGame)persist(GAME_KEY,game);},[game,canPersistGame]);
+  // Recover the archive before game controls can mutate the current hand.
+  useEffect(()=>{
+    if(!initialGame.game.replayArchiveStored)return;
+    const id=initialGame.game.tournamentId;
+    let live=true;
+    readReplayArchive(id).then(archive=>{
+      if(!live)return;
+      if(!archive){offloadedRef.current=false;setArchiveWarning(true);return;}
+      setGame(current=>current.tournamentId!==id?current:{
+        ...current,replayArchive:mergeReplayArchives(archive,current.replayArchive)
+      });
+    }).catch(()=>{if(live){offloadedRef.current=false;setArchiveWarning(true);}})
+      .finally(()=>{if(live)setArchiveReady(true);});
+    return ()=>{live=false;};
+  },[initialGame.game]);
+  useEffect(()=>{
+    if(!canPersistGame||!archiveReady)return;
+    const snapshot=game;
+    const revision=++saveRevision.current;
+    const compact=(s:GameState)=>({...s,replayArchive:s.replayArchive.slice(-3),replayArchiveStored:true});
+    // Keep a complete local fallback until the initial IndexedDB write succeeds.
+    // Later snapshots keep the latest three hands locally until DB catches up.
+    persist(GAME_KEY,offloadedRef.current?compact(snapshot):{...snapshot,replayArchiveStored:false});
+    archiveQueue.current=archiveQueue.current
+      .then(()=>writeReplayArchive(snapshot.tournamentId,snapshot.replayArchive))
+      .then(()=>{
+        offloadedRef.current=true;
+        if(revision===saveRevision.current)persist(GAME_KEY,compact(snapshot));
+      })
+      .catch(()=>{
+        offloadedRef.current=false;
+        if(revision===saveRevision.current){
+          persist(GAME_KEY,{...snapshot,replayArchiveStored:false});
+          setArchiveWarning(true);
+        }
+      });
+  },[game,canPersistGame,archiveReady]);
   useEffect(()=>{persist(STORY_KEY,storyProgress);},[storyProgress]);
   useEffect(()=>{persist(PAGE_KEY,page);},[page]);
   useEffect(()=>{persist(CAREER_KEY,career);},[career]);
@@ -411,9 +453,11 @@ export default function App(){
   };
   const configureTable=()=>{setSetupPending(true);};
     const isStory=page==='academy'&&Boolean(storyProgress.activeLesson);
-    return <div className={`app-shell ${page==='play'?'playing':''} ${isStory?'story-playing':''}`}>
+    if(!archiveReady)return <div className="app-shell archive-loader" role="status">Загрузка истории раздач…</div>;
+  return <div className={`app-shell ${page==='play'?'playing':''} ${isStory?'story-playing':''}`}>
     {page!=='play'&&!isStory&&<aside className="desktop-rail"><button className="wordmark" onClick={()=>navigate('home')}>pocket<span>.</span></button><div className="desktop-tabs">{([{page:'home',name:'Клуб',icon:'home'},{page:'play',name:'Играть',icon:'spade'},{page:'academy',name:'Уроки',icon:'book'},{page:'stats',name:'Я',icon:'stats'}] as const).map(t=><button key={t.page} onClick={()=>navigate(t.page)} className={page===t.page?'active':''}><Icon name={t.icon}/>{t.name}</button>)}</div><small>POCKET · виртуальные фишки</small></aside>}
     {recoveryNotice!=='none'&&<div className="storage-warning" role="alert"><strong>Предыдущее сохранение не удалось открыть.</strong> {recoveryNotice==='backed-up'?'Исходные данные сохранены отдельно в браузере.':'Не удалось создать резервную копию; исходные данные не перезаписываются до создания нового стола.'}</div>}
+    {archiveWarning&&<div className="storage-warning" role="status">Не удалось загрузить или сохранить полный архив раздач. Доступная локальная история сохранена.</div>}
     {saveError&&<div className="storage-warning" role="alert"><strong>Прогресс не сохраняется.</strong> Хранилище браузера заполнено или недоступно. Не закрывай страницу, пока ошибка не устранена.</div>}
     <main className="app-main">{page!=='play'&&!isStory&&<Header onChange={navigate}/>}
       {page==='home'?<Home game={game} progress={storyProgress} started={started} onChange={navigate} onPractice={id=>{setStoryProgress(p=>openStory(p,id));navigate('academy');}} onNewTable={()=>{setSetupPending(true);navigate('play');}}/>:
